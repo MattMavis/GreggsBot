@@ -10,7 +10,7 @@ from .base import ResponderModule
 logger = logging.getLogger(__name__)
 
 URL = "https://data.wowtoken.app/v2/current/retail.json"
-GBP_COST = 15.0
+GBP_COST = 17.0
 EUR_COST = 20.0
 
 
