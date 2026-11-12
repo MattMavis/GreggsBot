@@ -16,12 +16,11 @@ class Config:
         def get(name, default=""):
             return (env.get(name) or "").strip() or default
 
-        missing = [name for name in ("DISCORD_TOKEN", "API") if not get(name)]
-        if missing:
-            raise ConfigError("Missing required environment variable(s): " + ", ".join(missing))
+        if not get("DISCORD_TOKEN"):
+            raise ConfigError("Missing required environment variable: DISCORD_TOKEN")
 
         self.token = get("DISCORD_TOKEN")
-        self.api = get("API").rstrip("/") + "/"
+        self.api = get("API").rstrip("/") + "/" if get("API") else ""
         self.wcl_token = get("WCL_TOKEN")
         self.prefix = get("PREFIX", "!")
         self.guild_name = get("GUILD_NAME", "Greggs")

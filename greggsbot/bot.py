@@ -37,7 +37,8 @@ class GreggsBot(discord.Client):
 
     async def setup_hook(self):
         self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
-        self.resources = ResourceService(self.config.api, self.session)
+        if self.config.api:
+            self.resources = ResourceService(self.config.api, self.session)
 
     async def close(self):
         await super().close()
@@ -52,17 +53,17 @@ class GreggsBot(discord.Client):
         self.modules_started = True
 
         self.ai = AiModule(self)
-        self.modules = [
-            RollModule(self),
-            EightBallModule(self),
-            PastaModule(self),
-            QuickLinksModule(self),
-            RaidReminderModule(self),
-            RaiderIoModule(self),
-            WowTokenModule(self),
-            WarcraftLogsModule(self),
-            GuidesModule(self),
-        ]
+        self.modules = [RollModule(self), RaiderIoModule(self), WowTokenModule(self), WarcraftLogsModule(self)]
+        if self.resources is not None:
+            self.modules += [
+                EightBallModule(self),
+                PastaModule(self),
+                QuickLinksModule(self),
+                RaidReminderModule(self),
+                GuidesModule(self),
+            ]
+        else:
+            logger.warning("API is not set: 8-ball, pasta, quick links, raid reminders and guides are off")
         self.modules.append(HelpModule(self))
         for module in self.modules:
             try:

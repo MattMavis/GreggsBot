@@ -29,11 +29,10 @@ commands.
 Required:
 
 - `DISCORD_TOKEN` - bot token (Developer Portal > Bot > Reset Token).
-- `API` - base URL of the JSON API (a Firebase Realtime Database). It serves `raids.json`,
-  `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`.
 
 Optional:
 
+- `API` - base URL of the JSON API (a Firebase Realtime Database) serving `raids.json`, `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links, raid reminders and guides are switched off.
 - `WCL_TOKEN` - Warcraft Logs v1 API key (https://www.warcraftlogs.com/profile). Without it `!wcl` says logs aren't configured.
 - `PREFIX` - command prefix, default `!`.
 - `BOT_CHAN` - channel id the bot logs to. Unset = log file/console only.

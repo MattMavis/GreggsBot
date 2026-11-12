@@ -23,7 +23,7 @@ Do part 1 once, then pick one of the hosting options in part 3.
 | Name | Required | What it is |
 | --- | --- | --- |
 | `DISCORD_TOKEN` | yes | The bot token from step 1. |
-| `API` | yes | Base URL of the JSON API that serves guides, links, pastas, 8-ball answers, reminders and mention replies. |
+| `API` | no | Without it 8-ball, pasta, quick links, raid reminders and guides are switched off. Base URL of the JSON API that serves guides, links, pastas, 8-ball answers, reminders and mention replies. |
 | `PREFIX` | no | Command prefix. Default `!`. |
 | `WCL_TOKEN` | no | Warcraft Logs v1 API key, from the bottom of <https://www.warcraftlogs.com/profile>. Needed for `!wcl`. |
 | `BOT_CHAN` | no | ID of a channel the bot posts its own status messages to. |
@@ -134,7 +134,7 @@ These hosts restart the process when it exits, so `@GreggsBot restart` works wit
 2. If `BOT_CHAN` is set, it posts "bot started bleep bloop" there.
 3. `!ghelp` replies with the command list.
 4. `!roll` and `!token` reply. These need nothing but the bot itself.
-5. `!8ball will this work?` replies. This one confirms the `API` setting is right.
+5. `!8ball will this work?` replies. This one confirms the `API` setting is right (skip it if you run without `API`).
 
 The log line `Scheduling X of Y reminders` at startup tells you how many raid reminders were accepted. A rejected reminder gets its own line saying why.
 
@@ -156,7 +156,7 @@ Raid reminders are read once at startup, so restart the bot after changing them.
 
 | Symptom | Likely cause |
 | --- | --- |
-| Exits at once with `Missing required environment variable(s)` | `DISCORD_TOKEN` or `API` is empty or the settings file was not found. Run from the repo folder. |
+| Exits at once with `Missing required environment variable(s)` | `DISCORD_TOKEN` is empty or the settings file was not found. Run from the repo folder. |
 | Exits with `PrivilegedIntentsRequired` | Message Content Intent is off (part 1, step 2). |
 | Exits with `Improper token has been passed` | The token is wrong or was reset. Copy a fresh one. |
 | Online but ignores every command | Wrong `PREFIX`, or the bot cannot see or post in that channel. |

@@ -15,6 +15,9 @@ class AiModule(BaseModule):
             await self.lookup_response(message)
 
     async def lookup_response(self, message):
+        if self.bot.resources is None:
+            await message.reply("My creator forgot to give me witty responses...")
+            return
         replies = await self.fetch_or_reply(message, self.bot.resources.bot_replies())
         if replies is None:
             return
