@@ -1,0 +1,4 @@
+discord.py>=2.4
+croniter
+python-dotenv
+tzdata; sys_platform == "win32"

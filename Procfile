@@ -1,1 +1,1 @@
-worker: npm start
+worker: python -m greggsbot
