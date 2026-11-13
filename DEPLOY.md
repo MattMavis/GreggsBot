@@ -27,7 +27,7 @@ Do part 1 once, then pick one of the hosting options in part 3.
 | `PREFIX` | no | Command prefix. Default `!`. |
 | `WOWUTILS_KEY` | no | Group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and calendar reminders. |
 | `RAID_CHANNEL` | no | ID of the channel raid reminders are posted in. |
-| `RAID_ROLE` | no | Name of a role to ping in raid reminders. |
+| `RAID_ROLE` | no | Name of a role to ping in raid reminders. Several roles: separate with commas. |
 | `RAID_REMIND` | no | When to remind: a time on the raid day (`14:00`) and/or hours before the start (`1`). Default `14:00,1`. |
 | `WCL_TOKEN` | no | Warcraft Logs v1 API key, from the bottom of <https://www.warcraftlogs.com/profile>. Needed for `!wcl`. |
 | `BOT_CHAN` | no | ID of a channel the bot posts its own status messages to. |

@@ -182,12 +182,14 @@ class RaidCalendarModule(ResponderModule):
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
             return
 
-        lines = []
-        role = discord.utils.get(channel.guild.roles, name=self.config.raid_role) if self.config.raid_role else None
-        if role is not None:
-            lines.append(role.mention)
-        elif self.config.raid_role:
-            logger.error("[%s] role %r not found", self.name, self.config.raid_role)
+        pings = []
+        for name in self.config.raid_roles:
+            role = discord.utils.get(channel.guild.roles, name=name)
+            if role is None:
+                logger.error("[%s] role %r not found", self.name, name)
+            else:
+                pings.append(role.mention)
+        lines = [" ".join(pings)] if pings else []
         lines.append(f"⏰ {title(event)} starts {stamp(start, 'R')} - {stamp(start, 't')}")
         lines.append(signup_line(event))
         await channel.send(

@@ -29,7 +29,7 @@ class Config:
         self.raid = get("RAID")
 
         self.wowutils_key = get("WOWUTILS_KEY")
-        self.raid_role = get("RAID_ROLE")
+        self.raid_roles = [name.strip() for name in get("RAID_ROLE").split(",") if name.strip()]
         self.raid_channel = None
         if get("RAID_CHANNEL"):
             try:
