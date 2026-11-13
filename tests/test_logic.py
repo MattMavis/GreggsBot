@@ -176,10 +176,21 @@ def test_raid_calendar_reminders():
     reminders = parse_reminders("14:00, 1")
 
     def due(now, sent=()):
-        return [key for _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent))]
+        return [key for _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent), tz)]
 
     assert due(start - timedelta(hours=1)) == ["e1|before1.0"]
     assert due(start.replace(hour=14, minute=10)) == ["e1|at(14, 0)"]
     assert due(start - timedelta(hours=1), sent=["e1|before1.0"]) == []
     assert due(start - timedelta(hours=3)) == []
     assert signup_line(night) == "2/3 coming · 1 not answered"
+
+
+def test_raid_reminder_clock_time_is_local_not_group_zone():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from greggsbot.modules.raidcalendar import fire_time
+
+    start = datetime(2026, 11, 15, 21, 0, tzinfo=ZoneInfo("Europe/Paris"))
+    fire = fire_time(start, ("at", (14, 0)), ZoneInfo("Europe/London"))
+    assert fire == datetime(2026, 11, 15, 14, 0, tzinfo=ZoneInfo("Europe/London"))

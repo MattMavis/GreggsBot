@@ -64,19 +64,20 @@ def parse_reminders(text):
     return reminders
 
 
-def fire_time(start, reminder):
+def fire_time(start, reminder, local_tz=None):
     kind, value = reminder
     if kind == "at":
-        return start.replace(hour=value[0], minute=value[1])
+        # clock times are the bot's own time (REMINDER_TZ or the machine's), not the group's server zone
+        return start.astimezone(local_tz).replace(hour=value[0], minute=value[1])
     return start - timedelta(hours=value)
 
 
-def due_reminders(events, tz, now, reminders, sent):
+def due_reminders(events, tz, now, reminders, sent, local_tz=None):
     """(event, start, key) for each reminder whose moment has arrived and has not been sent."""
     due = []
     for start, event in upcoming(events, tz, now):
         for reminder in reminders:
-            fire_at = fire_time(start, reminder)
+            fire_at = fire_time(start, reminder, local_tz)
             key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
             if fire_at <= now < min(start, fire_at + GRACE) and key not in sent:
                 due.append((event, start, key))
@@ -166,7 +167,9 @@ class RaidCalendarModule(ResponderModule):
     async def send_due(self):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
-        for event, start, key in due_reminders(events, tz, now, self.config.raid_reminders, self.sent):
+        for event, start, key in due_reminders(
+            events, tz, now, self.config.raid_reminders, self.sent, self.config.tz
+        ):
             await self.send_reminder(event, start)
             self.sent.add(key)
         live = {str(e.get("eventId")) for _, e in upcoming(events, tz, now)}
