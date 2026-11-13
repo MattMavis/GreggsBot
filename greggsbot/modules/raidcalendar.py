@@ -152,12 +152,15 @@ class RaidCalendarModule(ResponderModule):
                 raise HttpError(resp.status)
             return await resp.json(content_type=None), resp.headers.get("ETag")
 
-    async def fetch_events(self):
+    async def group(self):
         if self.group_id is None:
             root, _ = await self.request("")
             self.group_id = root["group"]["groupId"]
+        return self.group_id
+
+    async def fetch_events(self):
         data, self.etag = await self.request(
-            f"/groups/{self.group_id}/calendar-events?upcoming=true&limit=30", self.etag
+            f"/groups/{await self.group()}/calendar-events?upcoming=true&limit=30", self.etag
         )
         if data is not None:
             try:

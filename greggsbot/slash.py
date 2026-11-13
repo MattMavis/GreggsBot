@@ -10,6 +10,7 @@ from discord import app_commands
 from .modules.eightball import EightBallModule
 from .modules.guides import GuidesModule
 from .modules.help import HelpModule
+from .modules.lootcouncil import LootCouncilModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
 from .modules.raidcalendar import RaidCalendarModule, night_date, upcoming
@@ -158,6 +159,21 @@ def register(bot):
     @app_commands.autocomplete(night=night_choices)
     async def reminders(interaction: discord.Interaction, night: str, state: Literal["off", "on"]):
         await run(interaction, reminders_cmd.module, "reminders", [state, night])
+
+    council_cmd = command(LootCouncilModule, "lootcouncil", "Draw this week's loot council from the roster")
+
+    @council_cmd
+    @app_commands.describe(
+        action="draw (officers), status, undo the last draw, or reset the whole list",
+        count="How many people to draw (default 1)",
+    )
+    async def lootcouncil(
+        interaction: discord.Interaction,
+        action: Literal["draw", "status", "undo", "reset"] = "draw",
+        count: Optional[int] = None,
+    ):
+        args = [count] if action == "draw" and count else [] if action == "draw" else [action]
+        await run(interaction, council_cmd.module, "lootcouncil", args)
 
     eightball_cmd = command(EightBallModule, "8ball", "Ask the Magic 8-Ball a yes/no question")
 

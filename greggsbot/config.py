@@ -47,6 +47,8 @@ class Config:
         self.raid_hour_message = get("RAID_HOUR_MESSAGE", HOUR_MESSAGE)
         self.raid_setup_id = get("RAID_SETUP_ID", "1")
 
+        self.loot_council_ranks = [r.strip() for r in get("LOOT_COUNCIL_RANKS", "Raider").split(",") if r.strip()]
+
         self.bot_chan = None
         if get("BOT_CHAN"):
             try:

@@ -220,3 +220,25 @@ def test_officer_role_can_manage_reminders():
     member = lambda *names: SimpleNamespace(roles=[SimpleNamespace(name=n) for n in names], guild_permissions=None)
     assert can_manage(member("Officer"))
     assert not can_manage(member("Raider"))
+
+
+def test_loot_council_never_repeats_within_a_round():
+    from greggsbot.modules.lootcouncil import draw
+
+    roster = ["a", "b", "c"]
+    picked, seen = [], []
+    for _ in range(3):
+        chosen, picked, restarted = draw(roster, picked, 1)
+        seen += chosen
+        assert not restarted
+    assert sorted(seen) == roster
+
+    chosen, picked, restarted = draw(roster, picked, 1)
+    assert restarted and picked == chosen
+
+    # two left in the hat, three wanted: the round restarts mid-draw without repeating anyone in this draw
+    chosen, picked, restarted = draw(roster, ["a"], 3)
+    assert sorted(chosen) == roster and restarted
+
+    # someone who left the roster is forgotten
+    assert draw(["a", "b"], ["a", "gone"], 1)[0] == ["b"]

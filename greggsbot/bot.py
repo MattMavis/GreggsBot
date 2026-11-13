@@ -9,6 +9,7 @@ from .modules.base import is_admin
 from .modules.eightball import EightBallModule
 from .modules.guides import GuidesModule
 from .modules.help import HelpModule
+from .modules.lootcouncil import LootCouncilModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
 from .modules.raidcalendar import RaidCalendarModule
@@ -68,7 +69,8 @@ class GreggsBot(discord.Client):
         else:
             logger.warning("API is not set: 8-ball, pasta, quick links, raid reminders and guides are off")
         if self.config.wowutils_key:
-            self.modules.append(RaidCalendarModule(self))
+            calendar = RaidCalendarModule(self)
+            self.modules += [calendar, LootCouncilModule(self, calendar)]
         self.modules.append(HelpModule(self))
         for module in self.modules:
             try:
