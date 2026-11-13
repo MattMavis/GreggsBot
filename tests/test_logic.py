@@ -286,3 +286,12 @@ def test_raid_message_file_overrides_setting(tmp_path, monkeypatch):
     (tmp_path / "messages").mkdir()
     (tmp_path / MESSAGE_FILES["before"]).write_text("from file\n", encoding="utf-8")
     assert module.message_text("before") == "from file"
+
+
+def test_extra_replies_and_answers_load():
+    from greggsbot.util import extra_entries
+
+    replies = extra_entries("replies.txt")
+    assert len(replies) > 20 and all(r["content"] and not r["content"].startswith("#") for r in replies)
+    assert len(extra_entries("answers.txt")) >= 20
+    assert extra_entries("missing.txt") == []

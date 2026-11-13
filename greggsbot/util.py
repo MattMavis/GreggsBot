@@ -1,5 +1,17 @@
 import math
+import pathlib
 import random
+
+DATA_DIR = pathlib.Path(__file__).parent / "data"
+
+
+def extra_entries(filename):
+    """Lines of a text file in greggsbot/data, in the same shape as the API's weighted entries."""
+    try:
+        lines = (DATA_DIR / filename).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    return [{"content": line.strip(), "weight": 1} for line in lines if line.strip() and not line.startswith("#")]
 
 
 def ordinal(n):

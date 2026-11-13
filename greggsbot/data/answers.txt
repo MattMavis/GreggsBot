@@ -1,0 +1,22 @@
+# Extra 8-ball answers. One per line; lines starting with # are ignored.
+# These are added to the ones in the API database.
+Yes, and it'll drop on the first kill.
+Yes, but only after 200 wipes.
+The loot council says yes.
+As sure as a sausage roll is hot at 8am. 🥐
+Aye, go on then.
+The RNG gods smile on you. For once.
+Yes. Don't make it weird.
+Ask again after the next reset.
+Hazy. Try again once you've repaired.
+The 8-ball is still loading into the instance.
+Standby, checking the logs.
+Ask an officer. Then ignore their answer like usual.
+No, and it wouldn't have been an upgrade anyway.
+Not with that parse.
+The loot council says no.
+Not a chance. That's a wipe.
+No. Run back.
+About as likely as everyone being online 15 minutes early.
+Only on a Tuesday, and never before the nerfs.
+Doubtful. Have you considered rerolling?

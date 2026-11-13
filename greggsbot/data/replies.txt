@@ -1,0 +1,34 @@
+# Extra replies for when someone @mentions the bot. One per line; lines starting with # are ignored.
+# These are added to the ones in the API database.
+I'm on cooldown. Try again in 2 minutes.
+That's a wipe. Run back.
+Have you tried standing out of the fire?
+Sorry, I was tabbed out. What did I miss?
+I'd answer, but I'm saving my cooldowns for the next pull.
+Not now, I'm in a Greggs queue and the sausage rolls are nearly gone. 🥐
+Out of range.
+That sounds like a healer problem.
+That sounds like a tank problem.
+It's always the DPS. Always.
+Check the pinned messages. No, I don't know which ones.
+You're not on my friends list, so I can't hear you.
+Parse first, questions later.
+Loot council has reviewed your message and awarded it to someone else.
+I'm just here for the steak bakes.
+Bold of you to ping me with that item level.
+Go again?
+Did you sign up on the calendar though?
+My Weakaura says no.
+Ready check failed: you were AFK.
+I'll get to it right after one more key.
+That's what she pulled.
+One sausage roll and I might consider it. 🥐
+Unlucky. 50 DKP minus.
+I blame lag.
+Have you tried turning your addons off and on again?
+The boss was at 1%, we don't talk about it.
+Sorry, can't talk, releasing spirit.
+I'm a bot, not a miracle worker. Ask an officer.
+Interrupt your own casts, I'm busy.
+Who pulled?
+This message has been classed as an unauthorised absence (UA).

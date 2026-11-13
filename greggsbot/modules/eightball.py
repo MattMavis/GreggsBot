@@ -1,4 +1,4 @@
-from ..util import weighted_pick
+from ..util import extra_entries, weighted_pick
 from .base import ResponderModule
 
 
@@ -17,7 +17,7 @@ class EightBallModule(ResponderModule):
         answers = await self.fetch_or_reply(message, self.bot.resources.answers())
         if answers is None:
             return
-        answer = weighted_pick([a for a in answers if a.get("content")])
+        answer = weighted_pick([a for a in answers + extra_entries("answers.txt") if a.get("content")])
         if answer is None:
             await message.reply("The 8-Ball did not foresee this!")
         else:

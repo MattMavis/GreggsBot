@@ -1,5 +1,9 @@
-from ..util import weighted_pick
+import logging
+
+from ..util import extra_entries, weighted_pick
 from .base import BaseModule
+
+logger = logging.getLogger(__name__)
 
 
 class AiModule(BaseModule):
@@ -15,12 +19,12 @@ class AiModule(BaseModule):
             await self.lookup_response(message)
 
     async def lookup_response(self, message):
-        if self.bot.resources is None:
-            await message.reply("My creator forgot to give me witty responses...")
-            return
-        replies = await self.fetch_or_reply(message, self.bot.resources.bot_replies())
-        if replies is None:
-            return
+        replies = extra_entries("replies.txt")
+        if self.bot.resources is not None:
+            try:
+                replies = replies + await self.bot.resources.bot_replies()
+            except Exception:
+                logger.exception("[%s] could not fetch replies, using the built-in ones", self.name)
         reply = weighted_pick([r for r in replies if r.get("content")])
         if reply is None:
             await message.reply("My creator forgot to give me witty responses...")
