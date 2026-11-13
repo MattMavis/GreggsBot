@@ -136,11 +136,12 @@ def register(bot):
     async def raids(interaction: discord.Interaction):
         await run(interaction, raids_cmd.module, "raids")
 
-    raidtest_cmd = command(RaidCalendarModule, "raidtest", "Officers: post a test raid reminder now")
+    raidtest_cmd = command(RaidCalendarModule, "raidtest", "Officers: post test raid posts now")
 
     @raidtest_cmd
-    async def raidtest(interaction: discord.Interaction):
-        await run(interaction, raidtest_cmd.module, "raidtest")
+    @app_commands.describe(what="Which posts to test (default: reminders)")
+    async def raidtest(interaction: discord.Interaction, what: Literal["reminders", "cancel"] = "reminders"):
+        await run(interaction, raidtest_cmd.module, "raidtest", ["cancel"] if what == "cancel" else [])
 
     reminders_cmd = command(RaidCalendarModule, "reminders", "Officers: turn one raid night's reminders off or on")
 

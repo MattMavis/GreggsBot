@@ -146,7 +146,7 @@ class RaidCalendarModule(ResponderModule):
             "__Description__: Upcoming raid nights and who's signed up.\n"
             f"__Usage__: `{p}raids`\n"
             f"__Officers__: `{p}reminders off 17/11` or `{p}reminders on 17/11` to mute one night's reminders, "
-            f"`{p}raidtest` to post a test reminder"
+            f"`{p}raidtest` to post test reminders, `{p}raidtest cancel` to post test cancellation notices"
         )
         return self.name, content
 
@@ -197,7 +197,7 @@ class RaidCalendarModule(ResponderModule):
         if not nights:
             await message.reply("No raid nights on the calendar. Go outside.")
         elif word == "raidtest":
-            await self.test_reminder(message, nights)
+            await self.test_reminder(message, nights, cancel=bool(args) and args[0].lower().startswith("cancel"))
         elif word == "reminders":
             await self.toggle_reminders(message, nights, args)
         else:
@@ -211,13 +211,22 @@ class RaidCalendarModule(ResponderModule):
     def muted_mark(self, event):
         return " 🔕" if str(event.get("eventId")) in self.muted else ""
 
-    async def test_reminder(self, message, nights):
+    async def test_reminder(self, message, nights, cancel=False):
         if not self.config.raid_channel:
             await message.reply("RAID_CHANNEL isn't set, so I have nowhere to post reminders.")
             return
-        posted = [await self.send_reminder(kind, test=True) for kind in ("at", "before")]
+        if cancel:
+            start, event = nights[0]
+            posted = [
+                await self.announce_status(dict(event, status=status), start, test=True)
+                for status in ("cancelled", "planned")
+            ]
+            what = "cancelled and back-on notices"
+        else:
+            posted = [await self.send_reminder(kind, test=True) for kind in ("at", "before")]
+            what = "reminders"
         if all(posted):
-            await message.reply(f"Both test reminders posted in <#{self.config.raid_channel}>.")
+            await message.reply(f"Both test {what} posted in <#{self.config.raid_channel}>.")
         else:
             await message.reply("I couldn't post in the reminder channel. Check RAID_CHANNEL and my permissions there.")
 
@@ -313,11 +322,10 @@ class RaidCalendarModule(ResponderModule):
             text = text.replace("{link}", await self.hub_link())
         return await self.post(text, test)
 
-    async def announce_status(self, event, start):
+    async def announce_status(self, event, start, test=False):
         if event.get("status") == "cancelled":
-            await self.post(f"❌ {title(event)} on {stamp(start, 'F')} has been **cancelled**.")
-        else:
-            await self.post(f"✅ {title(event)} on {stamp(start, 'F')} is back on.")
+            return await self.post(f"❌ {title(event)} on {stamp(start, 'F')} has been **cancelled**.", test)
+        return await self.post(f"✅ {title(event)} on {stamp(start, 'F')} is back on.", test)
 
     def load_state(self):
         try:
