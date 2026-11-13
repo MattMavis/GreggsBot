@@ -143,6 +143,16 @@ def register(bot):
     async def raidtest(interaction: discord.Interaction, what: Literal["reminders", "cancel"] = "reminders"):
         await run(interaction, raidtest_cmd.module, "raidtest", ["cancel"] if what == "cancel" else [])
 
+    raidmessage_cmd = command(RaidCalendarModule, "raidmessage", "Officers: see or change a raid reminder's wording")
+
+    @raidmessage_cmd
+    @app_commands.describe(
+        which="The 14:00 raid-day reminder or the hour-before one",
+        text="New wording. Leave empty to see the current one, or type reset for the default",
+    )
+    async def raidmessage(interaction: discord.Interaction, which: Literal["hour", "day"], text: Optional[str] = None):
+        await run(interaction, raidmessage_cmd.module, "raidmessage", [which] + ([text] if text else []))
+
     reminders_cmd = command(RaidCalendarModule, "reminders", "Officers: turn one raid night's reminders off or on")
 
     async def night_choices(interaction: discord.Interaction, current: str):

@@ -16,6 +16,8 @@ API = "https://api.wowutils.com/v1"
 POLL_SECONDS = 300
 GRACE = timedelta(minutes=30)
 STATE_FILE = os.path.join("state", "raid_reminders.json")
+# plain text files, edited by hand or with the raidmessage command; read every time a reminder is sent
+MESSAGE_FILES = {"at": os.path.join("messages", "raid_day.txt"), "before": os.path.join("messages", "raid_hour.txt")}
 COMING = ("present", "late")
 HUB = "https://wowutils.com/viserio-cooldowns/raid"
 # {link} becomes the raid planning hub link
@@ -130,7 +132,7 @@ def find_night(nights, text, local_tz=None):
 
 class RaidCalendarModule(ResponderModule):
     name = "Raid Calendar"
-    commands = ("raids", "raidtest", "reminders")
+    commands = ("raids", "raidtest", "reminders", "raidmessage")
 
     def __init__(self, bot):
         super().__init__(bot)
@@ -146,7 +148,8 @@ class RaidCalendarModule(ResponderModule):
             "__Description__: Upcoming raid nights and who's signed up.\n"
             f"__Usage__: `{p}raids`\n"
             f"__Officers__: `{p}reminders off 17/11` or `{p}reminders on 17/11` to mute one night's reminders, "
-            f"`{p}raidtest` to post test reminders, `{p}raidtest cancel` to post test cancellation notices"
+            f"`{p}raidtest` to post test reminders, `{p}raidtest cancel` to post test cancellation notices, "
+            f"`{p}raidmessage hour <new text>` or `{p}raidmessage day <new text>` to change a reminder's wording"
         )
         return self.name, content
 
@@ -188,6 +191,9 @@ class RaidCalendarModule(ResponderModule):
     async def respond(self, message, word, args):
         if word != "raids" and not can_manage(message.author):
             await message.reply("Nice try. That one is for officers.")
+            return
+        if word == "raidmessage":
+            await self.edit_message(message)
             return
         fetched = await self.fetch_or_reply(message, self.fetch_events())
         if fetched is None:
@@ -317,10 +323,43 @@ class RaidCalendarModule(ResponderModule):
 
     async def send_reminder(self, kind, test=False):
         """kind is "at" (the raid-day message) or "before" (the hour-before message)."""
-        text = self.config.raid_day_message if kind == "at" else self.config.raid_hour_message
+        text = self.message_text(kind)
         if "{link}" in text:
             text = text.replace("{link}", await self.hub_link())
         return await self.post(text, test)
+
+    def message_text(self, kind):
+        try:
+            with open(MESSAGE_FILES[kind], encoding="utf-8") as f:
+                text = f.read().strip()
+        except OSError:
+            text = ""
+        return text or (self.config.raid_day_message if kind == "at" else self.config.raid_hour_message)
+
+    async def edit_message(self, message):
+        p = self.config.prefix
+        parts = message.content.split(None, 2)
+        if len(parts) < 2 or parts[1].lower() not in ("day", "hour"):
+            await message.reply(
+                f"Usage: `{p}raidmessage hour <new text>` or `{p}raidmessage day <new text>`. "
+                "Leave the text off to see the current one, or use `reset` to go back to the default. "
+                "`{link}` becomes the raid planning link."
+            )
+            return
+        which = parts[1].lower()
+        kind = "at" if which == "day" else "before"
+        path = MESSAGE_FILES[kind]
+        if len(parts) == 2:
+            await message.reply(f"The {which} reminder currently says:\n{self.message_text(kind)}")
+        elif parts[2].strip().lower() == "reset":
+            if os.path.exists(path):
+                os.remove(path)
+            await message.reply(f"The {which} reminder is back to the default:\n{self.message_text(kind)}")
+        else:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(parts[2].strip() + "\n")
+            await message.reply(f"Saved. The {which} reminder now says:\n{parts[2].strip()}\nUse `{p}raidtest` to see it posted.")
 
     async def announce_status(self, event, start, test=False):
         if event.get("status") == "cancelled":
