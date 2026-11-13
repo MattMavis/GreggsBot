@@ -1,34 +1,36 @@
 # Extra replies for when someone @mentions the bot. One per line; lines starting with # are ignored.
 # These are added to the ones in the API database.
-I'm on cooldown. Try again in 2 minutes.
-That's a wipe. Run back.
-Have you tried standing out of the fire?
-Sorry, I was tabbed out. What did I miss?
-I'd answer, but I'm saving my cooldowns for the next pull.
-Not now, I'm in a Greggs queue and the sausage rolls are nearly gone. 🥐
-Out of range.
-That sounds like a healer problem.
-That sounds like a tank problem.
-It's always the DPS. Always.
-Check the pinned messages. No, I don't know which ones.
-You're not on my friends list, so I can't hear you.
-Parse first, questions later.
-Loot council has reviewed your message and awarded it to someone else.
-I'm just here for the steak bakes.
-Bold of you to ping me with that item level.
-Go again?
-Did you sign up on the calendar though?
-My Weakaura says no.
-Ready check failed: you were AFK.
-I'll get to it right after one more key.
-That's what she pulled.
-One sausage roll and I might consider it. 🥐
-Unlucky. 50 DKP minus.
-I blame lag.
-Have you tried turning your addons off and on again?
-The boss was at 1%, we don't talk about it.
-Sorry, can't talk, releasing spirit.
-I'm a bot, not a miracle worker. Ask an officer.
-Interrupt your own casts, I'm busy.
-Who pulled?
-This message has been classed as an unauthorised absence (UA).
+Oh good, it's you again.
+I was having a lovely day until this notification.
+Wow. Fascinating. Anyway.
+I'd agree with you, but then we'd both be wrong.
+Did you think before typing that, or is this a freestyle?
+Sorry, I don't speak nonsense.
+New phone, who dis?
+I'm busy. Have you tried bothering someone who cares?
+That's a lot of words for "I need attention".
+Cool story. Tell it to someone else.
+I've seen better takes in a bin fire.
+Please hold. Your message is important to absolutely nobody.
+Somewhere, a village is missing you.
+I'm not ignoring you, I'm just prioritising literally everything else.
+You again? I thought we'd agreed to see other bots.
+Ask your mum.
+Error 404: interest not found.
+Bold move, pinging me with that.
+I'd explain it to you, but I left my crayons at home.
+Thanks for your input. It has been filed in the bin.
+Mate, I'm a bot and even I'm embarrassed for you.
+Is this going somewhere, or are we just making noise?
+I'll add that to the list of things I don't care about.
+You're the reason they put instructions on shampoo.
+Have you considered simply not?
+I'd roast you, but my creator told me not to burn rubbish.
+Read that back to yourself. Slowly.
+Congratulations, that's the worst thing I've read today, and I read all of this server.
+No.
+Not my problem, pal.
+I was built for greater things than this conversation.
+Ping me again and I'm telling the officers what you did.
+Shut up, I'm eating a sausage roll. 🥐
+Hm? Sorry, I stopped listening the moment you started.

@@ -1,22 +1,24 @@
 # Extra 8-ball answers. One per line; lines starting with # are ignored.
 # These are added to the ones in the API database.
-Yes, and it'll drop on the first kill.
-Yes, but only after 200 wipes.
-The loot council says yes.
-As sure as a sausage roll is hot at 8am. 🥐
-Aye, go on then.
-The RNG gods smile on you. For once.
-Yes. Don't make it weird.
-Ask again after the next reset.
-Hazy. Try again once you've repaired.
-The 8-ball is still loading into the instance.
-Standby, checking the logs.
-Ask an officer. Then ignore their answer like usual.
-No, and it wouldn't have been an upgrade anyway.
-Not with that parse.
-The loot council says no.
-Not a chance. That's a wipe.
-No. Run back.
-About as likely as everyone being online 15 minutes early.
-Only on a Tuesday, and never before the nerfs.
-Doubtful. Have you considered rerolling?
+Yes. Now go away.
+Obviously. Did you really need a magic ball for that?
+Yes, you absolute walnut.
+Sure, why not. Nothing matters anyway.
+Fine. Yes. Happy now?
+Yes, against all odds and my better judgement.
+Aye, even a broken clock like you is right twice a day.
+Ask someone who cares.
+I'd tell you, but I can't be arsed.
+Come back when you've got a better question.
+The 8-ball is on its break. Piss off.
+Why are you asking a ball? Seek help.
+Maybe. Maybe not. I don't lose sleep over it.
+No. And frankly I'm insulted you asked.
+Lol. No.
+Not in this lifetime, sunshine.
+No, and you knew that before you asked.
+Absolutely not. Have some self-respect.
+The answer is no. The answer was always going to be no.
+In your dreams.
+Hard no. Next.
+You'd have better luck asking the sausage roll. 🥐
