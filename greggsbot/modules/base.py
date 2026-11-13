@@ -58,7 +58,8 @@ def is_admin(member):
 
 def can_manage(member):
     permissions = getattr(member, "guild_permissions", None)
-    return is_admin(member) or bool(permissions and permissions.manage_guild)
+    officer = any(r.name.lower() == "officer" for r in getattr(member, "roles", []))
+    return officer or is_admin(member) or bool(permissions and permissions.manage_guild)
 
 
 class ResponderModule(BaseModule):

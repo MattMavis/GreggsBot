@@ -212,3 +212,11 @@ def test_slash_commands_follow_loaded_modules():
     bot.modules = [RollModule(bot), HelpModule(bot)]
     register(bot)
     assert sorted(c.name for c in bot.tree.get_commands()) == ["duel", "help", "roll"]
+
+
+def test_officer_role_can_manage_reminders():
+    from greggsbot.modules.base import can_manage
+
+    member = lambda *names: SimpleNamespace(roles=[SimpleNamespace(name=n) for n in names], guild_permissions=None)
+    assert can_manage(member("Officer"))
+    assert not can_manage(member("Raider"))
