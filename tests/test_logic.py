@@ -273,3 +273,16 @@ def test_key_run_text_shows_open_seats():
     text = run_text(run, timezone.utc)
     assert "**Ara-Kara** *(push week)*" in text
     assert text.endswith("🛡️ Thrall · 💚 *open* · ⚔️ Jaina")
+
+
+def test_raid_message_file_overrides_setting(tmp_path, monkeypatch):
+    from greggsbot.modules.raidcalendar import MESSAGE_FILES, RaidCalendarModule
+
+    monkeypatch.chdir(tmp_path)
+    config = Config({"DISCORD_TOKEN": "x", "RAID_HOUR_MESSAGE": "from settings"})
+    module = RaidCalendarModule(SimpleNamespace(config=config))
+    assert module.message_text("before") == "from settings"
+
+    (tmp_path / "messages").mkdir()
+    (tmp_path / MESSAGE_FILES["before"]).write_text("from file\n", encoding="utf-8")
+    assert module.message_text("before") == "from file"

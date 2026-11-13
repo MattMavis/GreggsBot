@@ -39,7 +39,8 @@ Optional:
 - Officer commands (role `Officer` or `Greggs Bot Maintainer`, or the Manage Server permission): `!reminders off 17/11` / `!reminders on 17/11` mutes one night's reminders, `!raidtest` posts a test reminder for the next raid.
 - With `WOWUTILS_KEY` set the bot also has `!keys` (planned Mythic+ runs and who's looking for a group) and announces in `RAID_CHANNEL` when a raid night is cancelled or put back on.
 - `LOOT_COUNCIL_RANKS` - wowutils roster ranks `!lootcouncil` draws from, default `Raider`. Officers draw with `!lootcouncil` (or `!lootcouncil 2`); nobody is drawn twice until the whole list has had a turn. `!lootcouncil status`, `undo` and `reset` manage the round.
-- `RAID_DAY_MESSAGE`, `RAID_HOUR_MESSAGE` - replace the text of the raid-day (clock time) and hour-before reminders. `{link}` becomes the raid planning hub link, built with `RAID_SETUP_ID` (default `1`).
+- Reminder wording lives in `messages/raid_day.txt` and `messages/raid_hour.txt` (created by `!raidmessage hour <new text>` / `!raidmessage day <new text>`, or by hand; read each time, no restart needed). Without a file the bot uses the settings below.
+- `RAID_DAY_MESSAGE`, `RAID_HOUR_MESSAGE` - replace the default text of the raid-day (clock time) and hour-before reminders. `{link}` becomes the raid planning hub link, built with `RAID_SETUP_ID` (default `1`).
 - `RAID_REMIND` - when to remind, default `14:00,1`: a time on the raid day (`14:00`, in `REMINDER_TZ` or the machine's local time) and/or a number of hours before the start (`1`).
 - `WCL_TOKEN` - Warcraft Logs v1 API key (https://www.warcraftlogs.com/profile). Without it `!wcl` says logs aren't configured.
 - `PREFIX` - command prefix, default `!`.

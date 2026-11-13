@@ -6,6 +6,7 @@ __pycache__/
 # Logs
 log/
 state/
+messages/
 *.log
 
 # Secrets
