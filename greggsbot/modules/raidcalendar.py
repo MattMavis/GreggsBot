@@ -91,6 +91,21 @@ def due_reminders(events, tz, now, reminders, sent, local_tz=None):
     return due
 
 
+def status_changes(events, known):
+    """Events whose status flipped since last time, plus the statuses to remember.
+
+    An event seen for the first time is only remembered, never announced.
+    """
+    changed = []
+    seen = {}
+    for event in events:
+        event_id, status = str(event.get("eventId")), event.get("status")
+        seen[event_id] = status
+        if known.get(event_id) not in (None, status) and status in ("planned", "cancelled"):
+            changed.append(event)
+    return changed, seen
+
+
 def stamp(start, style):
     return f"<t:{int(start.timestamp())}:{style}>"
 
@@ -122,7 +137,7 @@ class RaidCalendarModule(ResponderModule):
         self.group_id = None
         self.etag = None
         self.cached = ([], timezone.utc)
-        self.sent, self.muted = self.load_state()
+        self.sent, self.muted, self.statuses = self.load_state()
         self.task = None
 
     async def help_text(self):
@@ -238,6 +253,11 @@ class RaidCalendarModule(ResponderModule):
     async def send_due(self):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
+        changed, self.statuses = status_changes(events, self.statuses)
+        for event in changed:
+            start = event_start(event, tz)
+            if start and start > now:
+                await self.announce_status(event, start)
         wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
         for event, reminder, key in due_reminders(
             wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz
@@ -258,8 +278,8 @@ class RaidCalendarModule(ResponderModule):
             logger.exception("[%s] could not look up the current reset for the link", self.name)
         return link
 
-    async def send_reminder(self, kind, test=False):
-        """kind is "at" (the raid-day message) or "before" (the hour-before message)."""
+    async def post(self, text, test=False):
+        """Posts in the reminder channel with the raid roles pinged. Returns whether it worked."""
         channel = self.bot.get_channel(self.config.raid_channel)
         if channel is None:
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
@@ -278,9 +298,6 @@ class RaidCalendarModule(ResponderModule):
         lines = [" ".join(pings)] if pings else []
         if test:
             lines.append("*(this is a test)*")
-        text = self.config.raid_day_message if kind == "at" else self.config.raid_hour_message
-        if "{link}" in text:
-            text = text.replace("{link}", await self.hub_link())
         lines.append(text)
         try:
             await channel.send("\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True))
@@ -289,15 +306,28 @@ class RaidCalendarModule(ResponderModule):
             return False
         return True
 
+    async def send_reminder(self, kind, test=False):
+        """kind is "at" (the raid-day message) or "before" (the hour-before message)."""
+        text = self.config.raid_day_message if kind == "at" else self.config.raid_hour_message
+        if "{link}" in text:
+            text = text.replace("{link}", await self.hub_link())
+        return await self.post(text, test)
+
+    async def announce_status(self, event, start):
+        if event.get("status") == "cancelled":
+            await self.post(f"❌ {title(event)} on {stamp(start, 'F')} has been **cancelled**.")
+        else:
+            await self.post(f"✅ {title(event)} on {stamp(start, 'F')} is back on.")
+
     def load_state(self):
         try:
             with open(STATE_FILE, encoding="utf-8") as f:
                 state = json.load(f)
-            return set(state["sent"]), set(state["muted"])
-        except (OSError, ValueError, KeyError, TypeError):
-            return set(), set()
+            return set(state["sent"]), set(state["muted"]), dict(state.get("statuses") or {})
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return set(), set(), {}
 
     def save_state(self):
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump({"sent": sorted(self.sent), "muted": sorted(self.muted)}, f)
+            json.dump({"sent": sorted(self.sent), "muted": sorted(self.muted), "statuses": self.statuses}, f)

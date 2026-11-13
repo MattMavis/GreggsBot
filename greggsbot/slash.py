@@ -11,6 +11,7 @@ from .modules.eightball import EightBallModule
 from .modules.guides import GuidesModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
+from .modules.mythickeys import MythicKeysModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
 from .modules.raidcalendar import RaidCalendarModule, night_date, upcoming
@@ -159,6 +160,12 @@ def register(bot):
     @app_commands.autocomplete(night=night_choices)
     async def reminders(interaction: discord.Interaction, night: str, state: Literal["off", "on"]):
         await run(interaction, reminders_cmd.module, "reminders", [state, night])
+
+    keys_cmd = command(MythicKeysModule, "keys", "Planned Mythic+ runs and who's looking for a group")
+
+    @keys_cmd
+    async def keys(interaction: discord.Interaction):
+        await run(interaction, keys_cmd.module, "keys")
 
     council_cmd = command(LootCouncilModule, "lootcouncil", "Draw this week's loot council from the roster")
 

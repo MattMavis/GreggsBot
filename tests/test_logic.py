@@ -242,3 +242,34 @@ def test_loot_council_never_repeats_within_a_round():
 
     # someone who left the roster is forgotten
     assert draw(["a", "b"], ["a", "gone"], 1)[0] == ["b"]
+
+
+def test_raid_cancellation_is_announced_once():
+    from greggsbot.modules.raidcalendar import status_changes
+
+    night = {"eventId": "e1", "status": "planned"}
+    changed, known = status_changes([night], {})
+    assert changed == [] and known == {"e1": "planned"}
+
+    cancelled = dict(night, status="cancelled")
+    changed, known = status_changes([cancelled], known)
+    assert changed == [cancelled]
+    assert status_changes([cancelled], known)[0] == []
+
+
+def test_key_run_text_shows_open_seats():
+    from datetime import timezone
+
+    from greggsbot.modules.mythickeys import run_text
+
+    run = {
+        "date": "2026-11-20", "startTime": "20:30", "dungeons": [{"name": "Ara-Kara"}], "note": "push week",
+        "slots": [
+            {"slotId": "tank", "characterName": "Thrall"},
+            {"slotId": "healer", "characterName": None, "guestName": None},
+            {"slotId": "dps-1", "characterName": None, "guestName": "Jaina"},
+        ],
+    }
+    text = run_text(run, timezone.utc)
+    assert "**Ara-Kara** *(push week)*" in text
+    assert text.endswith("🛡️ Thrall · 💚 *open* · ⚔️ Jaina")
