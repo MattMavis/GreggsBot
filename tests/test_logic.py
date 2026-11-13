@@ -154,3 +154,30 @@ def test_duel_timeout_removes_duel_from_both_players():
     duels, sent = asyncio.run(run())
     assert duels == {}
     assert "<@2> didn't roll in time" in sent[-1]
+
+
+def test_raid_calendar_reminders():
+    from datetime import datetime, timedelta, timezone
+
+    from greggsbot.modules.raidcalendar import due_reminders, signup_line
+
+    tz = timezone.utc
+    night = {
+        "eventId": "e1", "date": "2026-11-18", "startTime": "20:00", "status": "planned", "rosterSize": 3,
+        "signups": [
+            {"status": "present", "responded": True},
+            {"status": "late", "responded": True},
+            {"status": "pending", "responded": False},
+        ],
+    }
+    cancelled = dict(night, eventId="e2", status="cancelled")
+    start = datetime(2026, 11, 18, 20, 0, tzinfo=tz)
+
+    def due(now, sent=()):
+        return [(e["eventId"], h) for e, _, h in due_reminders([night, cancelled], tz, now, [24, 1], set(sent))]
+
+    assert due(start - timedelta(hours=1)) == [("e1", 1)]
+    assert due(start - timedelta(hours=24) + timedelta(minutes=10)) == [("e1", 24)]
+    assert due(start - timedelta(hours=1), sent=["e1:1"]) == []
+    assert due(start - timedelta(hours=5)) == []
+    assert signup_line(night) == "2/3 coming · 1 not answered"

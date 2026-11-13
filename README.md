@@ -33,6 +33,10 @@ Required:
 Optional:
 
 - `API` - base URL of the JSON API (a Firebase Realtime Database) serving `raids.json`, `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links, raid reminders and guides are switched off.
+- `WOWUTILS_KEY` - group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and raid reminders read from the group's calendar.
+- `RAID_CHANNEL` - channel id reminders are posted in. Without it only `!raids` works.
+- `RAID_ROLE` - name of a role to ping in reminders.
+- `RAID_REMIND_HOURS` - hours before each raid to remind, default `24,1`. Reminders 12 hours or more ahead also name who hasn't answered the signup.
 - `WCL_TOKEN` - Warcraft Logs v1 API key (https://www.warcraftlogs.com/profile). Without it `!wcl` says logs aren't configured.
 - `PREFIX` - command prefix, default `!`.
 - `BOT_CHAN` - channel id the bot logs to. Unset = log file/console only.

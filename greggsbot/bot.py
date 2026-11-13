@@ -11,6 +11,7 @@ from .modules.guides import GuidesModule
 from .modules.help import HelpModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
+from .modules.raidcalendar import RaidCalendarModule
 from .modules.raiderio import RaiderIoModule
 from .modules.raidreminder import RaidReminderModule
 from .modules.roll import RollModule
@@ -64,6 +65,8 @@ class GreggsBot(discord.Client):
             ]
         else:
             logger.warning("API is not set: 8-ball, pasta, quick links, raid reminders and guides are off")
+        if self.config.wowutils_key:
+            self.modules.append(RaidCalendarModule(self))
         self.modules.append(HelpModule(self))
         for module in self.modules:
             try:

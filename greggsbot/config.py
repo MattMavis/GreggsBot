@@ -28,6 +28,19 @@ class Config:
         self.guild_region = get("GUILD_REGION", "EU").upper()
         self.raid = get("RAID")
 
+        self.wowutils_key = get("WOWUTILS_KEY")
+        self.raid_role = get("RAID_ROLE")
+        self.raid_channel = None
+        if get("RAID_CHANNEL"):
+            try:
+                self.raid_channel = int(get("RAID_CHANNEL"))
+            except ValueError:
+                raise ConfigError("RAID_CHANNEL must be a channel id (a number)")
+        try:
+            self.raid_remind_hours = [float(h) for h in get("RAID_REMIND_HOURS", "24,1").split(",") if h.strip()]
+        except ValueError:
+            raise ConfigError("RAID_REMIND_HOURS must be numbers separated by commas, e.g. 24,1")
+
         self.bot_chan = None
         if get("BOT_CHAN"):
             try:

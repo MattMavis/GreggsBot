@@ -25,6 +25,10 @@ Do part 1 once, then pick one of the hosting options in part 3.
 | `DISCORD_TOKEN` | yes | The bot token from step 1. |
 | `API` | no | Without it 8-ball, pasta, quick links, raid reminders and guides are switched off. Base URL of the JSON API that serves guides, links, pastas, 8-ball answers, reminders and mention replies. |
 | `PREFIX` | no | Command prefix. Default `!`. |
+| `WOWUTILS_KEY` | no | Group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and calendar reminders. |
+| `RAID_CHANNEL` | no | ID of the channel raid reminders are posted in. |
+| `RAID_ROLE` | no | Name of a role to ping in raid reminders. |
+| `RAID_REMIND_HOURS` | no | Hours before each raid to remind. Default `24,1`. |
 | `WCL_TOKEN` | no | Warcraft Logs v1 API key, from the bottom of <https://www.warcraftlogs.com/profile>. Needed for `!wcl`. |
 | `BOT_CHAN` | no | ID of a channel the bot posts its own status messages to. |
 | `REMINDER_TZ` | no | Timezone for raid reminder times, e.g. `Europe/London`. |
