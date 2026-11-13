@@ -35,7 +35,7 @@ Optional:
 - `API` - base URL of the JSON API (a Firebase Realtime Database) serving `raids.json`, `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links, raid reminders and guides are switched off.
 - `WOWUTILS_KEY` - group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and raid reminders read from the group's calendar.
 - `RAID_CHANNEL` - channel id reminders are posted in. Without it only `!raids` works.
-- `RAID_ROLE` - name of a role to ping in reminders. Several roles: separate with commas.
+- `RAID_ROLE` - name or id of a role to ping in reminders. Several roles: separate with commas.
 - Officer commands (role `Officer` or `Greggs Bot Maintainer`, or the Manage Server permission): `!reminders off 17/11` / `!reminders on 17/11` mutes one night's reminders, `!raidtest` posts a test reminder for the next raid.
 - `RAID_DAY_MESSAGE`, `RAID_HOUR_MESSAGE` - replace the text of the raid-day (clock time) and hour-before reminders. `{link}` becomes the raid planning hub link, built with `RAID_SETUP_ID` (default `1`).
 - `RAID_REMIND` - when to remind, default `14:00,1`: a time on the raid day (`14:00`, in `REMINDER_TZ` or the machine's local time) and/or a number of hours before the start (`1`).

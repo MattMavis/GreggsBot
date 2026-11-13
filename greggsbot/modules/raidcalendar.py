@@ -264,7 +264,10 @@ class RaidCalendarModule(ResponderModule):
 
         pings = []
         for name in self.config.raid_roles:
-            role = discord.utils.get(channel.guild.roles, name=name)
+            if name.isdigit():
+                role = channel.guild.get_role(int(name))
+            else:
+                role = discord.utils.get(channel.guild.roles, name=name)
             if role is None:
                 logger.error("[%s] role %r not found", self.name, name)
             else:
