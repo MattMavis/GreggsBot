@@ -56,6 +56,11 @@ def is_admin(member):
     return any(r.name == "Greggs Bot Maintainer" for r in getattr(member, "roles", []))
 
 
+def can_manage(member):
+    permissions = getattr(member, "guild_permissions", None)
+    return is_admin(member) or bool(permissions and permissions.manage_guild)
+
+
 class ResponderModule(BaseModule):
     commands = ()
 

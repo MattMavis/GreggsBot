@@ -184,6 +184,12 @@ def test_raid_calendar_reminders():
     assert due(start - timedelta(hours=3)) == []
     assert signup_line(night) == "2/3 coming · 1 not answered"
 
+    from greggsbot.modules.raidcalendar import find_night, upcoming
+
+    nights = upcoming([night], tz, start - timedelta(days=2))
+    assert find_night(nights, "18/11", tz)[1] is night
+    assert find_night(nights, "19/11", tz) is None
+
 
 def test_raid_reminder_clock_time_is_local_not_group_zone():
     from datetime import datetime

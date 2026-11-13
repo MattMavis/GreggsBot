@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import discord
 
 from ..resources import HttpError
-from .base import TROUBLE, ResponderModule
+from .base import ResponderModule, can_manage
 
 logger = logging.getLogger(__name__)
 
@@ -93,20 +93,40 @@ def title(event):
     return f"**{name}** ({event['difficulty']})" if event.get("difficulty") else f"**{name}**"
 
 
+def night_date(start, local_tz=None):
+    return start.astimezone(local_tz).strftime("%Y-%m-%d")
+
+
+def find_night(nights, text, local_tz=None):
+    """Matches '2026-11-17', '17/11' or '17/11/2026' against the upcoming nights."""
+    for start, event in nights:
+        local = start.astimezone(local_tz)
+        if text in (f"{local:%Y-%m-%d}", f"{local.day}/{local.month}", f"{local:%d/%m}", f"{local:%d/%m/%Y}"):
+            return start, event
+    return None
+
+
 class RaidCalendarModule(ResponderModule):
     name = "Raid Calendar"
-    commands = ("raids",)
+    commands = ("raids", "raidtest", "reminders")
 
     def __init__(self, bot):
         super().__init__(bot)
         self.group_id = None
         self.etag = None
         self.cached = ([], timezone.utc)
-        self.sent = self.load_sent()
+        self.sent, self.muted = self.load_state()
         self.task = None
 
     async def help_text(self):
-        return self.name, f"__Description__: Upcoming raid nights and who's signed up.\n__Usage__: `{self.config.prefix}raids`"
+        p = self.config.prefix
+        content = (
+            "__Description__: Upcoming raid nights and who's signed up.\n"
+            f"__Usage__: `{p}raids`\n"
+            f"__Officers__: `{p}reminders off 17/11` or `{p}reminders on 17/11` to mute one night's reminders, "
+            f"`{p}raidtest` to post a test reminder"
+        )
+        return self.name, content
 
     async def start(self):
         if self.config.raid_channel:
@@ -141,17 +161,58 @@ class RaidCalendarModule(ResponderModule):
         return self.cached
 
     async def respond(self, message, word, args):
+        if word != "raids" and not can_manage(message.author):
+            await message.reply("Nice try. That one is for officers.")
+            return
         fetched = await self.fetch_or_reply(message, self.fetch_events())
         if fetched is None:
             return
         events, tz = fetched
-        nights = upcoming(events, tz, datetime.now(timezone.utc))[:5]
+        nights = upcoming(events, tz, datetime.now(timezone.utc))
         if not nights:
             await message.reply("No raid nights on the calendar. Go outside.")
+        elif word == "raidtest":
+            await self.test_reminder(message, nights)
+        elif word == "reminders":
+            await self.toggle_reminders(message, nights, args)
+        else:
+            lines = [
+                f"{stamp(start, 'F')} ({stamp(start, 'R')}) - {title(e)}{self.muted_mark(e)}\n{signup_line(e)}"
+                for start, e in nights[:5]
+            ]
+            embed = discord.Embed(title="Upcoming raid nights", description="\n\n".join(lines), color=0xFAA61A)
+            await message.reply(embed=embed)
+
+    def muted_mark(self, event):
+        return " 🔕" if str(event.get("eventId")) in self.muted else ""
+
+    async def test_reminder(self, message, nights):
+        if not self.config.raid_channel:
+            await message.reply("RAID_CHANNEL isn't set, so I have nowhere to post reminders.")
             return
-        lines = [f"{stamp(start, 'F')} ({stamp(start, 'R')}) - {title(e)}\n{signup_line(e)}" for start, e in nights]
-        embed = discord.Embed(title="Upcoming raid nights", description="\n\n".join(lines), color=0xFAA61A)
-        await message.reply(embed=embed)
+        start, event = nights[0]
+        if await self.send_reminder(event, start, test=True):
+            await message.reply(f"Test reminder for the next raid posted in <#{self.config.raid_channel}>.")
+        else:
+            await message.reply("I couldn't post in the reminder channel. Check RAID_CHANNEL and my permissions there.")
+
+    async def toggle_reminders(self, message, nights, args):
+        usage = f"Usage: `{self.config.prefix}reminders off 17/11` or `{self.config.prefix}reminders on 17/11`"
+        if len(args) != 2 or args[0].lower() not in ("on", "off"):
+            await message.reply(usage)
+            return
+        night = find_night(nights, args[1], self.config.tz)
+        if night is None:
+            await message.reply(f"There's no raid night on {args[1]}. {usage}")
+            return
+        start, event = night
+        if args[0].lower() == "off":
+            self.muted.add(str(event.get("eventId")))
+        else:
+            self.muted.discard(str(event.get("eventId")))
+        self.save_state()
+        state = "off 🔕" if args[0].lower() == "off" else "back on 🔔"
+        await message.reply(f"Reminders for {title(event)} on {stamp(start, 'F')} are {state}.")
 
     async def poll(self):
         while True:
@@ -167,20 +228,22 @@ class RaidCalendarModule(ResponderModule):
     async def send_due(self):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
+        wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
         for event, start, key in due_reminders(
-            events, tz, now, self.config.raid_reminders, self.sent, self.config.tz
+            wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz
         ):
             await self.send_reminder(event, start)
             self.sent.add(key)
         live = {str(e.get("eventId")) for _, e in upcoming(events, tz, now)}
         self.sent = {key for key in self.sent if key.split("|")[0] in live}
-        self.save_sent()
+        self.muted &= live
+        self.save_state()
 
-    async def send_reminder(self, event, start):
+    async def send_reminder(self, event, start, test=False):
         channel = self.bot.get_channel(self.config.raid_channel)
         if channel is None:
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
-            return
+            return False
 
         pings = []
         for name in self.config.raid_roles:
@@ -190,20 +253,26 @@ class RaidCalendarModule(ResponderModule):
             else:
                 pings.append(role.mention)
         lines = [" ".join(pings)] if pings else []
+        if test:
+            lines.append("*(this is a test)*")
         lines.append(f"⏰ {title(event)} starts {stamp(start, 'R')} - {stamp(start, 't')}")
         lines.append(signup_line(event))
-        await channel.send(
-            "\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True)
-        )
+        try:
+            await channel.send("\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True))
+        except discord.HTTPException:
+            logger.exception("[%s] could not post in the reminder channel", self.name)
+            return False
+        return True
 
-    def load_sent(self):
+    def load_state(self):
         try:
             with open(STATE_FILE, encoding="utf-8") as f:
-                return set(json.load(f))
-        except (OSError, ValueError):
-            return set()
+                state = json.load(f)
+            return set(state["sent"]), set(state["muted"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return set(), set()
 
-    def save_sent(self):
+    def save_state(self):
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
         with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(sorted(self.sent), f)
+            json.dump({"sent": sorted(self.sent), "muted": sorted(self.muted)}, f)

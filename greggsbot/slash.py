@@ -1,6 +1,7 @@
 """Slash-command versions of the prefix commands. Each one hands over to the same module code."""
 
 import logging
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
 import discord
@@ -11,7 +12,7 @@ from .modules.guides import GuidesModule
 from .modules.help import HelpModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
-from .modules.raidcalendar import RaidCalendarModule
+from .modules.raidcalendar import RaidCalendarModule, night_date, upcoming
 from .modules.raiderio import DEFAULT_CHARACTER, RaiderIoModule
 from .modules.roll import RollModule
 from .modules.warcraftlogs import WarcraftLogsModule
@@ -132,6 +133,31 @@ def register(bot):
     @raids_cmd
     async def raids(interaction: discord.Interaction):
         await run(interaction, raids_cmd.module, "raids")
+
+    raidtest_cmd = command(RaidCalendarModule, "raidtest", "Officers: post a test raid reminder now")
+
+    @raidtest_cmd
+    async def raidtest(interaction: discord.Interaction):
+        await run(interaction, raidtest_cmd.module, "raidtest")
+
+    reminders_cmd = command(RaidCalendarModule, "reminders", "Officers: turn one raid night's reminders off or on")
+
+    async def night_choices(interaction: discord.Interaction, current: str):
+        calendar = reminders_cmd.module
+        events, tz = calendar.cached
+        choices = []
+        for start, event in upcoming(events, tz, datetime.now(timezone.utc)):
+            local = start.astimezone(config.tz)
+            label = f"{local:%a %d %b %H:%M} - {event.get('name') or 'Raid'}{calendar.muted_mark(event)}"
+            if current.lower() in label.lower():
+                choices.append(app_commands.Choice(name=label[:100], value=night_date(start, config.tz)))
+        return choices[:25]
+
+    @reminders_cmd
+    @app_commands.describe(night="Which raid night", state="Reminders for that night")
+    @app_commands.autocomplete(night=night_choices)
+    async def reminders(interaction: discord.Interaction, night: str, state: Literal["off", "on"]):
+        await run(interaction, reminders_cmd.module, "reminders", [state, night])
 
     eightball_cmd = command(EightBallModule, "8ball", "Ask the Magic 8-Ball a yes/no question")
 
