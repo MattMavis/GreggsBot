@@ -49,9 +49,6 @@ class ResourceService:
         self.cache[name] = (now, data)
         return data
 
-    async def raids(self):
-        return await self.get("raids")
-
     async def links(self):
         return await self.get("links")
 

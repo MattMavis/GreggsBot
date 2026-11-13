@@ -8,7 +8,6 @@ import discord
 from discord import app_commands
 
 from .modules.eightball import EightBallModule
-from .modules.guides import GuidesModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
 from .modules.mythickeys import MythicKeysModule
@@ -206,14 +205,6 @@ def register(bot):
     @app_commands.describe(key="A specific pasta (leave empty for a random one)")
     async def pasta(interaction: discord.Interaction, key: Optional[str] = None):
         await run(interaction, pasta_cmd.module, "pasta", key.split()[:1] if key else [])
-
-    guide_cmd = command(GuidesModule, "guide", "Fetch boss guides like a BOSS")
-
-    @guide_cmd
-    @app_commands.describe(boss="Boss (or raid) name", raid="Raid name, if the boss name is ambiguous")
-    async def guide(interaction: discord.Interaction, boss: str, raid: Optional[str] = None):
-        args = [raid.split()[0], boss.split()[0]] if raid else boss.split()[:1]
-        await run(interaction, guide_cmd.module, "guide", args)
 
     link_cmd = command(QuickLinksModule, "link", "Get links fucking quick")
 

@@ -32,7 +32,7 @@ Required:
 
 Optional:
 
-- `API` - base URL of the JSON API (a Firebase Realtime Database) serving `raids.json`, `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links, raid reminders and guides are switched off.
+- `API` - base URL of the JSON API (a Firebase Realtime Database) serving `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links and the mention replies are switched off. Its fixed-schedule reminders are only used when `WOWUTILS_KEY` is not set.
 - `WOWUTILS_KEY` - group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and raid reminders read from the group's calendar.
 - `RAID_CHANNEL` - channel id reminders are posted in. Without it only `!raids` works.
 - `RAID_ROLE` - name or id of a role to ping in reminders. Several roles: separate with commas.

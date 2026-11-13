@@ -23,7 +23,7 @@ Do part 1 once, then pick one of the hosting options in part 3.
 | Name | Required | What it is |
 | --- | --- | --- |
 | `DISCORD_TOKEN` | yes | The bot token from step 1. |
-| `API` | no | Without it 8-ball, pasta, quick links, raid reminders and guides are switched off. Base URL of the JSON API that serves guides, links, pastas, 8-ball answers, reminders and mention replies. |
+| `API` | no | Without it 8-ball, pasta and quick links are switched off. Base URL of the JSON API that serves links, pastas, 8-ball answers, reminders and mention replies. |
 | `PREFIX` | no | Command prefix. Default `!`. |
 | `WOWUTILS_KEY` | no | Group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and calendar reminders. |
 | `RAID_CHANNEL` | no | ID of the channel raid reminders are posted in. |
@@ -154,7 +154,7 @@ sudo systemctl restart greggsbot
 
 On Windows use `.venv\Scripts\pip` and restart the window or `run.bat`. On Heroku-style hosts, pushing to the deployed branch redeploys.
 
-Raid reminders are read once at startup, so restart the bot after changing them. Links, pastas, guides and replies refresh by themselves within five minutes.
+Raid reminders are read once at startup, so restart the bot after changing them. Links, pastas and replies refresh by themselves within five minutes.
 
 ## Troubleshooting
 
@@ -164,7 +164,7 @@ Raid reminders are read once at startup, so restart the bot after changing them.
 | Exits with `PrivilegedIntentsRequired` | Message Content Intent is off (part 1, step 2). |
 | Exits with `Improper token has been passed` | The token is wrong or was reset. Copy a fresh one. |
 | Online but ignores every command | Wrong `PREFIX`, or the bot cannot see or post in that channel. |
-| `!roll` works but `!8ball`, `!pasta` and guides say "trouble fetching" | `API` is wrong or the JSON API is down. |
+| `!roll` works but `!8ball` and `!pasta` say "trouble fetching" | `API` is wrong or the JSON API is down. |
 | Replies arrive without the embed box | The bot lacks the `Embed Links` permission. |
 | Reminders fire at the wrong hour | Set `REMINDER_TZ`. |
 | Reminders never fire | Check the startup log for the rejected reminder and its reason. |
