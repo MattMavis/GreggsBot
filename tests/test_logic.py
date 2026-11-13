@@ -154,3 +154,122 @@ def test_duel_timeout_removes_duel_from_both_players():
     duels, sent = asyncio.run(run())
     assert duels == {}
     assert "<@2> didn't roll in time" in sent[-1]
+
+
+def test_raid_calendar_reminders():
+    from datetime import datetime, timedelta, timezone
+
+    from greggsbot.modules.raidcalendar import due_reminders, parse_reminders, signup_line
+
+    tz = timezone.utc
+    night = {
+        "eventId": "e1", "date": "2026-11-18", "startTime": "20:00", "status": "planned", "rosterSize": 3,
+        "signups": [
+            {"status": "present", "responded": True},
+            {"status": "late", "responded": True},
+            {"status": "pending", "responded": False},
+        ],
+    }
+    cancelled = dict(night, eventId="e2", status="cancelled")
+    start = datetime(2026, 11, 18, 20, 0, tzinfo=tz)
+
+    reminders = parse_reminders("14:00, 1")
+
+    def due(now, sent=()):
+        return [key for _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent), tz)]
+
+    assert due(start - timedelta(hours=1)) == ["e1|before1.0"]
+    assert due(start.replace(hour=14, minute=10)) == ["e1|at(14, 0)"]
+    assert due(start - timedelta(hours=1), sent=["e1|before1.0"]) == []
+    assert due(start - timedelta(hours=3)) == []
+    assert signup_line(night) == "2/3 coming · 1 not answered"
+
+    from greggsbot.modules.raidcalendar import find_night, upcoming
+
+    nights = upcoming([night], tz, start - timedelta(days=2))
+    assert find_night(nights, "18/11", tz)[1] is night
+    assert find_night(nights, "19/11", tz) is None
+
+
+def test_raid_reminder_clock_time_is_local_not_group_zone():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from greggsbot.modules.raidcalendar import fire_time
+
+    start = datetime(2026, 11, 15, 21, 0, tzinfo=ZoneInfo("Europe/Paris"))
+    fire = fire_time(start, ("at", (14, 0)), ZoneInfo("Europe/London"))
+    assert fire == datetime(2026, 11, 15, 14, 0, tzinfo=ZoneInfo("Europe/London"))
+
+
+def test_slash_commands_follow_loaded_modules():
+    from greggsbot.bot import GreggsBot
+    from greggsbot.modules.help import HelpModule
+    from greggsbot.modules.roll import RollModule
+    from greggsbot.slash import register
+
+    bot = GreggsBot(Config({"DISCORD_TOKEN": "x"}))
+    bot.modules = [RollModule(bot), HelpModule(bot)]
+    register(bot)
+    assert sorted(c.name for c in bot.tree.get_commands()) == ["duel", "help", "roll"]
+
+
+def test_officer_role_can_manage_reminders():
+    from greggsbot.modules.base import can_manage
+
+    member = lambda *names: SimpleNamespace(roles=[SimpleNamespace(name=n) for n in names], guild_permissions=None)
+    assert can_manage(member("Officer"))
+    assert not can_manage(member("Raider"))
+
+
+def test_loot_council_never_repeats_within_a_round():
+    from greggsbot.modules.lootcouncil import draw
+
+    roster = ["a", "b", "c"]
+    picked, seen = [], []
+    for _ in range(3):
+        chosen, picked, restarted = draw(roster, picked, 1)
+        seen += chosen
+        assert not restarted
+    assert sorted(seen) == roster
+
+    chosen, picked, restarted = draw(roster, picked, 1)
+    assert restarted and picked == chosen
+
+    # two left in the hat, three wanted: the round restarts mid-draw without repeating anyone in this draw
+    chosen, picked, restarted = draw(roster, ["a"], 3)
+    assert sorted(chosen) == roster and restarted
+
+    # someone who left the roster is forgotten
+    assert draw(["a", "b"], ["a", "gone"], 1)[0] == ["b"]
+
+
+def test_raid_cancellation_is_announced_once():
+    from greggsbot.modules.raidcalendar import status_changes
+
+    night = {"eventId": "e1", "status": "planned"}
+    changed, known = status_changes([night], {})
+    assert changed == [] and known == {"e1": "planned"}
+
+    cancelled = dict(night, status="cancelled")
+    changed, known = status_changes([cancelled], known)
+    assert changed == [cancelled]
+    assert status_changes([cancelled], known)[0] == []
+
+
+def test_key_run_text_shows_open_seats():
+    from datetime import timezone
+
+    from greggsbot.modules.mythickeys import run_text
+
+    run = {
+        "date": "2026-11-20", "startTime": "20:30", "dungeons": [{"name": "Ara-Kara"}], "note": "push week",
+        "slots": [
+            {"slotId": "tank", "characterName": "Thrall"},
+            {"slotId": "healer", "characterName": None, "guestName": None},
+            {"slotId": "dps-1", "characterName": None, "guestName": "Jaina"},
+        ],
+    }
+    text = run_text(run, timezone.utc)
+    assert "**Ara-Kara** *(push week)*" in text
+    assert text.endswith("🛡️ Thrall · 💚 *open* · ⚔️ Jaina")

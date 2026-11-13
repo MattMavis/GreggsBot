@@ -29,11 +29,18 @@ commands.
 Required:
 
 - `DISCORD_TOKEN` - bot token (Developer Portal > Bot > Reset Token).
-- `API` - base URL of the JSON API (a Firebase Realtime Database). It serves `raids.json`,
-  `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`.
 
 Optional:
 
+- `API` - base URL of the JSON API (a Firebase Realtime Database) serving `raids.json`, `links.json`, `answers.json`, `pastas.json`, `reminders.json` and `botreplies.json`. Without it 8-ball, pasta, quick links, raid reminders and guides are switched off.
+- `WOWUTILS_KEY` - group API key from wowutils.com (your group > Settings > API Access). Turns on `!raids` and raid reminders read from the group's calendar.
+- `RAID_CHANNEL` - channel id reminders are posted in. Without it only `!raids` works.
+- `RAID_ROLE` - name or id of a role to ping in reminders. Several roles: separate with commas.
+- Officer commands (role `Officer` or `Greggs Bot Maintainer`, or the Manage Server permission): `!reminders off 17/11` / `!reminders on 17/11` mutes one night's reminders, `!raidtest` posts a test reminder for the next raid.
+- With `WOWUTILS_KEY` set the bot also has `!keys` (planned Mythic+ runs and who's looking for a group) and announces in `RAID_CHANNEL` when a raid night is cancelled or put back on.
+- `LOOT_COUNCIL_RANKS` - wowutils roster ranks `!lootcouncil` draws from, default `Raider`. Officers draw with `!lootcouncil` (or `!lootcouncil 2`); nobody is drawn twice until the whole list has had a turn. `!lootcouncil status`, `undo` and `reset` manage the round.
+- `RAID_DAY_MESSAGE`, `RAID_HOUR_MESSAGE` - replace the text of the raid-day (clock time) and hour-before reminders. `{link}` becomes the raid planning hub link, built with `RAID_SETUP_ID` (default `1`).
+- `RAID_REMIND` - when to remind, default `14:00,1`: a time on the raid day (`14:00`, in `REMINDER_TZ` or the machine's local time) and/or a number of hours before the start (`1`).
 - `WCL_TOKEN` - Warcraft Logs v1 API key (https://www.warcraftlogs.com/profile). Without it `!wcl` says logs aren't configured.
 - `PREFIX` - command prefix, default `!`.
 - `BOT_CHAN` - channel id the bot logs to. Unset = log file/console only.
@@ -45,6 +52,7 @@ Optional:
 
 ## Notes
 
+- Every command works both with the prefix (`!roll`) and as a slash command (`/roll`). Slash-only names: `/duel @user` (for `!roll duel @user`), `/link name` (for quick links) and `/help` (for `!ghelp`).
 - Logs go to the console and `log/out.log`.
 - `@bot restart` from someone with the `Greggs Bot Maintainer` role makes the bot exit, so run it under something that restarts it (the `Procfile` does this on Heroku-style hosts).
 - Reminder cron expressions can have 5 fields, or 6 with seconds first (like node-cron).

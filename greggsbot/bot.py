@@ -9,14 +9,18 @@ from .modules.base import is_admin
 from .modules.eightball import EightBallModule
 from .modules.guides import GuidesModule
 from .modules.help import HelpModule
+from .modules.lootcouncil import LootCouncilModule
+from .modules.mythickeys import MythicKeysModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
+from .modules.raidcalendar import RaidCalendarModule
 from .modules.raiderio import RaiderIoModule
 from .modules.raidreminder import RaidReminderModule
 from .modules.roll import RollModule
 from .modules.warcraftlogs import WarcraftLogsModule
 from .modules.wowtoken import WowTokenModule
 from .resources import ResourceService
+from .slash import register as register_slash_commands
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +33,7 @@ class GreggsBot(discord.Client):
         allowed = discord.AllowedMentions(everyone=False, roles=False, users=True, replied_user=True)
         super().__init__(intents=intents, allowed_mentions=allowed)
         self.config = config
+        self.tree = discord.app_commands.CommandTree(self)
         self.session = None
         self.resources = None
         self.ai = None
@@ -37,7 +42,8 @@ class GreggsBot(discord.Client):
 
     async def setup_hook(self):
         self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
-        self.resources = ResourceService(self.config.api, self.session)
+        if self.config.api:
+            self.resources = ResourceService(self.config.api, self.session)
 
     async def close(self):
         await super().close()
@@ -52,23 +58,32 @@ class GreggsBot(discord.Client):
         self.modules_started = True
 
         self.ai = AiModule(self)
-        self.modules = [
-            RollModule(self),
-            EightBallModule(self),
-            PastaModule(self),
-            QuickLinksModule(self),
-            RaidReminderModule(self),
-            RaiderIoModule(self),
-            WowTokenModule(self),
-            WarcraftLogsModule(self),
-            GuidesModule(self),
-        ]
+        self.modules = [RollModule(self), RaiderIoModule(self), WowTokenModule(self), WarcraftLogsModule(self)]
+        if self.resources is not None:
+            self.modules += [
+                EightBallModule(self),
+                PastaModule(self),
+                QuickLinksModule(self),
+                RaidReminderModule(self),
+                GuidesModule(self),
+            ]
+        else:
+            logger.warning("API is not set: 8-ball, pasta, quick links, raid reminders and guides are off")
+        if self.config.wowutils_key:
+            calendar = RaidCalendarModule(self)
+            self.modules += [calendar, MythicKeysModule(self, calendar), LootCouncilModule(self, calendar)]
         self.modules.append(HelpModule(self))
         for module in self.modules:
             try:
                 await module.start()
             except Exception:
                 logger.exception("Module %s failed to start", module.name)
+        try:
+            register_slash_commands(self)
+            synced = await self.tree.sync()
+            logger.info("Registered %d slash commands", len(synced))
+        except Exception:
+            logger.exception("Could not register slash commands")
         await self.modules[0].log(":robot: bot started bleep bloop bleep bloop :robot:")
 
     async def on_message(self, message):
