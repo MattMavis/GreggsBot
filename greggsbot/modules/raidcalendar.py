@@ -17,6 +17,13 @@ POLL_SECONDS = 300
 GRACE = timedelta(minutes=30)
 STATE_FILE = os.path.join("state", "raid_reminders.json")
 COMING = ("present", "late")
+HUB = "https://wowutils.com/viserio-cooldowns/raid"
+# {link} becomes the raid planning hub link
+DAY_MESSAGE = (
+    "🗓️ Any absences for tonight's raid after this point will be classed as a late absence (LA). "
+    "Absence without informing an officer before the raid will count as an unauthorised absence (UA). {link}"
+)
+HOUR_MESSAGE = "📣 Raid starts in an hour, please check the calendar and be ready 15 minutes in advance!"
 
 
 def event_start(event, tz):
@@ -73,14 +80,14 @@ def fire_time(start, reminder, local_tz=None):
 
 
 def due_reminders(events, tz, now, reminders, sent, local_tz=None):
-    """(event, start, key) for each reminder whose moment has arrived and has not been sent."""
+    """(event, reminder, key) for each reminder whose moment has arrived and has not been sent."""
     due = []
     for start, event in upcoming(events, tz, now):
         for reminder in reminders:
             fire_at = fire_time(start, reminder, local_tz)
             key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
             if fire_at <= now < min(start, fire_at + GRACE) and key not in sent:
-                due.append((event, start, key))
+                due.append((event, reminder, key))
     return due
 
 
@@ -190,9 +197,9 @@ class RaidCalendarModule(ResponderModule):
         if not self.config.raid_channel:
             await message.reply("RAID_CHANNEL isn't set, so I have nowhere to post reminders.")
             return
-        start, event = nights[0]
-        if await self.send_reminder(event, start, test=True):
-            await message.reply(f"Test reminder for the next raid posted in <#{self.config.raid_channel}>.")
+        posted = [await self.send_reminder(kind, test=True) for kind in ("at", "before")]
+        if all(posted):
+            await message.reply(f"Both test reminders posted in <#{self.config.raid_channel}>.")
         else:
             await message.reply("I couldn't post in the reminder channel. Check RAID_CHANNEL and my permissions there.")
 
@@ -229,17 +236,27 @@ class RaidCalendarModule(ResponderModule):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
         wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
-        for event, start, key in due_reminders(
+        for event, reminder, key in due_reminders(
             wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz
         ):
-            await self.send_reminder(event, start)
+            await self.send_reminder(reminder[0])
             self.sent.add(key)
         live = {str(e.get("eventId")) for _, e in upcoming(events, tz, now)}
         self.sent = {key for key in self.sent if key.split("|")[0] in live}
         self.muted &= live
         self.save_state()
 
-    async def send_reminder(self, event, start, test=False):
+    async def hub_link(self):
+        link = f"{HUB}?groupId={self.group_id}"
+        try:
+            reset, _ = await self.request(f"/groups/{self.group_id}/latest-reset")
+            link += f"&resetId={reset['resetId']}&setupId={self.config.raid_setup_id}"
+        except Exception:
+            logger.exception("[%s] could not look up the current reset for the link", self.name)
+        return link
+
+    async def send_reminder(self, kind, test=False):
+        """kind is "at" (the raid-day message) or "before" (the hour-before message)."""
         channel = self.bot.get_channel(self.config.raid_channel)
         if channel is None:
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
@@ -255,8 +272,10 @@ class RaidCalendarModule(ResponderModule):
         lines = [" ".join(pings)] if pings else []
         if test:
             lines.append("*(this is a test)*")
-        lines.append(f"⏰ {title(event)} starts {stamp(start, 'R')} - {stamp(start, 't')}")
-        lines.append(signup_line(event))
+        text = self.config.raid_day_message if kind == "at" else self.config.raid_hour_message
+        if "{link}" in text:
+            text = text.replace("{link}", await self.hub_link())
+        lines.append(text)
         try:
             await channel.send("\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True))
         except discord.HTTPException:
