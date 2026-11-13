@@ -48,6 +48,7 @@ Optional:
 
 ## Notes
 
+- Every command works both with the prefix (`!roll`) and as a slash command (`/roll`). Slash-only names: `/duel @user` (for `!roll duel @user`), `/link name` (for quick links) and `/help` (for `!ghelp`).
 - Logs go to the console and `log/out.log`.
 - `@bot restart` from someone with the `Greggs Bot Maintainer` role makes the bot exit, so run it under something that restarts it (the `Procfile` does this on Heroku-style hosts).
 - Reminder cron expressions can have 5 fields, or 6 with seconds first (like node-cron).

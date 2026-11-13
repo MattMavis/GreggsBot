@@ -18,6 +18,7 @@ from .modules.roll import RollModule
 from .modules.warcraftlogs import WarcraftLogsModule
 from .modules.wowtoken import WowTokenModule
 from .resources import ResourceService
+from .slash import register as register_slash_commands
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class GreggsBot(discord.Client):
         allowed = discord.AllowedMentions(everyone=False, roles=False, users=True, replied_user=True)
         super().__init__(intents=intents, allowed_mentions=allowed)
         self.config = config
+        self.tree = discord.app_commands.CommandTree(self)
         self.session = None
         self.resources = None
         self.ai = None
@@ -73,6 +75,12 @@ class GreggsBot(discord.Client):
                 await module.start()
             except Exception:
                 logger.exception("Module %s failed to start", module.name)
+        try:
+            register_slash_commands(self)
+            synced = await self.tree.sync()
+            logger.info("Registered %d slash commands", len(synced))
+        except Exception:
+            logger.exception("Could not register slash commands")
         await self.modules[0].log(":robot: bot started bleep bloop bleep bloop :robot:")
 
     async def on_message(self, message):

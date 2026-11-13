@@ -194,3 +194,15 @@ def test_raid_reminder_clock_time_is_local_not_group_zone():
     start = datetime(2026, 11, 15, 21, 0, tzinfo=ZoneInfo("Europe/Paris"))
     fire = fire_time(start, ("at", (14, 0)), ZoneInfo("Europe/London"))
     assert fire == datetime(2026, 11, 15, 14, 0, tzinfo=ZoneInfo("Europe/London"))
+
+
+def test_slash_commands_follow_loaded_modules():
+    from greggsbot.bot import GreggsBot
+    from greggsbot.modules.help import HelpModule
+    from greggsbot.modules.roll import RollModule
+    from greggsbot.slash import register
+
+    bot = GreggsBot(Config({"DISCORD_TOKEN": "x"}))
+    bot.modules = [RollModule(bot), HelpModule(bot)]
+    register(bot)
+    assert sorted(c.name for c in bot.tree.get_commands()) == ["duel", "help", "roll"]
