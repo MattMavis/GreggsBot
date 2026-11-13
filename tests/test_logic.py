@@ -176,7 +176,7 @@ def test_raid_calendar_reminders():
     reminders = parse_reminders("14:00, 1")
 
     def due(now, sent=()):
-        return [key for _, _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent))]
+        return [key for _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent))]
 
     assert due(start - timedelta(hours=1)) == ["e1|before1.0"]
     assert due(start.replace(hour=14, minute=10)) == ["e1|at(14, 0)"]

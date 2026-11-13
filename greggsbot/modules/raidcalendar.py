@@ -17,8 +17,6 @@ POLL_SECONDS = 300
 GRACE = timedelta(minutes=30)
 STATE_FILE = os.path.join("state", "raid_reminders.json")
 COMING = ("present", "late")
-# reminders at least this long before the raid also name the people who have not answered
-CHASE_FROM = timedelta(hours=2)
 
 
 def event_start(event, tz):
@@ -74,14 +72,14 @@ def fire_time(start, reminder):
 
 
 def due_reminders(events, tz, now, reminders, sent):
-    """(event, start, fire_at, key) for each reminder whose moment has arrived and has not been sent."""
+    """(event, start, key) for each reminder whose moment has arrived and has not been sent."""
     due = []
     for start, event in upcoming(events, tz, now):
         for reminder in reminders:
             fire_at = fire_time(start, reminder)
             key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
             if fire_at <= now < min(start, fire_at + GRACE) and key not in sent:
-                due.append((event, start, fire_at, key))
+                due.append((event, start, key))
     return due
 
 
@@ -168,14 +166,14 @@ class RaidCalendarModule(ResponderModule):
     async def send_due(self):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
-        for event, start, fire_at, key in due_reminders(events, tz, now, self.config.raid_reminders, self.sent):
-            await self.send_reminder(event, start, chase=start - fire_at >= CHASE_FROM)
+        for event, start, key in due_reminders(events, tz, now, self.config.raid_reminders, self.sent):
+            await self.send_reminder(event, start)
             self.sent.add(key)
         live = {str(e.get("eventId")) for _, e in upcoming(events, tz, now)}
         self.sent = {key for key in self.sent if key.split("|")[0] in live}
         self.save_sent()
 
-    async def send_reminder(self, event, start, chase):
+    async def send_reminder(self, event, start):
         channel = self.bot.get_channel(self.config.raid_channel)
         if channel is None:
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
@@ -189,25 +187,9 @@ class RaidCalendarModule(ResponderModule):
             logger.error("[%s] role %r not found", self.name, self.config.raid_role)
         lines.append(f"⏰ {title(event)} starts {stamp(start, 'R')} - {stamp(start, 't')}")
         lines.append(signup_line(event))
-        if chase:
-            missing = await self.not_signed_up(event)
-            if missing:
-                lines.append("Still to answer: " + ", ".join(missing))
         await channel.send(
-            "\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True, users=True)
+            "\n".join(lines)[:2000], allowed_mentions=discord.AllowedMentions(roles=True)
         )
-
-    async def not_signed_up(self, event):
-        try:
-            data, _ = await self.request(f"/groups/{self.group_id}/calendar-events/{event['eventId']}/readiness")
-        except Exception:
-            logger.exception("[%s] readiness check failed", self.name)
-            return []
-        names = []
-        for member in data.get("notSignedUp") or []:
-            discord_id = member.get("discordUserId")
-            names.append(f"<@{discord_id}>" if discord_id else str(member.get("displayName")))
-        return names
 
     def load_sent(self):
         try:
