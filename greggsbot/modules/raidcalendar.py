@@ -17,8 +17,8 @@ POLL_SECONDS = 300
 GRACE = timedelta(minutes=30)
 STATE_FILE = os.path.join("state", "raid_reminders.json")
 COMING = ("present", "late")
-# reminders this many hours or more ahead also name the people who have not answered
-CHASE_FROM_HOURS = 12
+# reminders at least this long before the raid also name the people who have not answered
+CHASE_FROM = timedelta(hours=2)
 
 
 def event_start(event, tz):
@@ -53,15 +53,35 @@ def signup_line(event):
     return " · ".join(parts)
 
 
-def due_reminders(events, tz, now, hours_before, sent):
-    """(event, start, hours) for each reminder whose moment has arrived and has not been sent."""
+def parse_reminders(text):
+    """'14:00,1' -> [("at", (14, 0)), ("before", 1.0)]: a time on the raid day, or hours before the start."""
+    reminders = []
+    for part in text.split(","):
+        part = part.strip()
+        if ":" in part:
+            moment = datetime.strptime(part, "%H:%M")
+            reminders.append(("at", (moment.hour, moment.minute)))
+        elif part:
+            reminders.append(("before", float(part)))
+    return reminders
+
+
+def fire_time(start, reminder):
+    kind, value = reminder
+    if kind == "at":
+        return start.replace(hour=value[0], minute=value[1])
+    return start - timedelta(hours=value)
+
+
+def due_reminders(events, tz, now, reminders, sent):
+    """(event, start, fire_at, key) for each reminder whose moment has arrived and has not been sent."""
     due = []
     for start, event in upcoming(events, tz, now):
-        for hours in hours_before:
-            fire_at = start - timedelta(hours=hours)
-            key = f"{event.get('eventId')}:{hours:g}"
-            if fire_at <= now < fire_at + GRACE and key not in sent:
-                due.append((event, start, hours))
+        for reminder in reminders:
+            fire_at = fire_time(start, reminder)
+            key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
+            if fire_at <= now < min(start, fire_at + GRACE) and key not in sent:
+                due.append((event, start, fire_at, key))
     return due
 
 
@@ -148,14 +168,14 @@ class RaidCalendarModule(ResponderModule):
     async def send_due(self):
         events, tz = await self.fetch_events()
         now = datetime.now(timezone.utc)
-        for event, start, hours in due_reminders(events, tz, now, self.config.raid_remind_hours, self.sent):
-            await self.send_reminder(event, start, hours)
-            self.sent.add(f"{event.get('eventId')}:{hours:g}")
+        for event, start, fire_at, key in due_reminders(events, tz, now, self.config.raid_reminders, self.sent):
+            await self.send_reminder(event, start, chase=start - fire_at >= CHASE_FROM)
+            self.sent.add(key)
         live = {str(e.get("eventId")) for _, e in upcoming(events, tz, now)}
-        self.sent = {key for key in self.sent if key.split(":")[0] in live}
+        self.sent = {key for key in self.sent if key.split("|")[0] in live}
         self.save_sent()
 
-    async def send_reminder(self, event, start, hours):
+    async def send_reminder(self, event, start, chase):
         channel = self.bot.get_channel(self.config.raid_channel)
         if channel is None:
             logger.error("[%s] RAID_CHANNEL %s not found", self.name, self.config.raid_channel)
@@ -169,7 +189,7 @@ class RaidCalendarModule(ResponderModule):
             logger.error("[%s] role %r not found", self.name, self.config.raid_role)
         lines.append(f"⏰ {title(event)} starts {stamp(start, 'R')} - {stamp(start, 't')}")
         lines.append(signup_line(event))
-        if hours >= CHASE_FROM_HOURS:
+        if chase:
             missing = await self.not_signed_up(event)
             if missing:
                 lines.append("Still to answer: " + ", ".join(missing))

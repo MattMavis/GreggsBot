@@ -159,7 +159,7 @@ def test_duel_timeout_removes_duel_from_both_players():
 def test_raid_calendar_reminders():
     from datetime import datetime, timedelta, timezone
 
-    from greggsbot.modules.raidcalendar import due_reminders, signup_line
+    from greggsbot.modules.raidcalendar import due_reminders, parse_reminders, signup_line
 
     tz = timezone.utc
     night = {
@@ -173,11 +173,13 @@ def test_raid_calendar_reminders():
     cancelled = dict(night, eventId="e2", status="cancelled")
     start = datetime(2026, 11, 18, 20, 0, tzinfo=tz)
 
-    def due(now, sent=()):
-        return [(e["eventId"], h) for e, _, h in due_reminders([night, cancelled], tz, now, [24, 1], set(sent))]
+    reminders = parse_reminders("14:00, 1")
 
-    assert due(start - timedelta(hours=1)) == [("e1", 1)]
-    assert due(start - timedelta(hours=24) + timedelta(minutes=10)) == [("e1", 24)]
-    assert due(start - timedelta(hours=1), sent=["e1:1"]) == []
-    assert due(start - timedelta(hours=5)) == []
+    def due(now, sent=()):
+        return [key for _, _, _, key in due_reminders([night, cancelled], tz, now, reminders, set(sent))]
+
+    assert due(start - timedelta(hours=1)) == ["e1|before1.0"]
+    assert due(start.replace(hour=14, minute=10)) == ["e1|at(14, 0)"]
+    assert due(start - timedelta(hours=1), sent=["e1|before1.0"]) == []
+    assert due(start - timedelta(hours=3)) == []
     assert signup_line(night) == "2/3 coming · 1 not answered"

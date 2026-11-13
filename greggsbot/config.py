@@ -36,10 +36,12 @@ class Config:
                 self.raid_channel = int(get("RAID_CHANNEL"))
             except ValueError:
                 raise ConfigError("RAID_CHANNEL must be a channel id (a number)")
+        from .modules.raidcalendar import parse_reminders
+
         try:
-            self.raid_remind_hours = [float(h) for h in get("RAID_REMIND_HOURS", "24,1").split(",") if h.strip()]
+            self.raid_reminders = parse_reminders(get("RAID_REMIND", "14:00,1"))
         except ValueError:
-            raise ConfigError("RAID_REMIND_HOURS must be numbers separated by commas, e.g. 24,1")
+            raise ConfigError("RAID_REMIND must be times (14:00) or hours before the raid (1), separated by commas")
 
         self.bot_chan = None
         if get("BOT_CHAN"):
