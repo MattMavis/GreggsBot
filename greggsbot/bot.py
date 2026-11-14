@@ -6,6 +6,7 @@ import discord
 
 from .modules.ai import AiModule
 from .modules.base import is_admin
+from .modules.dmlog import DmLogModule, PingModule
 from .modules.eightball import EightBallModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
@@ -36,6 +37,7 @@ class GreggsBot(discord.Client):
         self.session = None
         self.resources = None
         self.ai = None
+        self.dm_log = None
         self.modules = []
         self.modules_started = False
 
@@ -57,7 +59,14 @@ class GreggsBot(discord.Client):
         self.modules_started = True
 
         self.ai = AiModule(self)
-        self.modules = [RollModule(self), RaiderIoModule(self), WowTokenModule(self), WarcraftLogsModule(self)]
+        self.dm_log = DmLogModule(self) if self.config.dm_log_channel else None
+        self.modules = [
+            RollModule(self),
+            RaiderIoModule(self),
+            WowTokenModule(self),
+            WarcraftLogsModule(self),
+            PingModule(self),
+        ]
         if self.resources is not None:
             self.modules += [EightBallModule(self), PastaModule(self), QuickLinksModule(self)]
             # the wowutils calendar replaces the API's fixed-schedule reminders; running both would double-post
@@ -83,7 +92,14 @@ class GreggsBot(discord.Client):
         await self.modules[0].log(":robot: bot started bleep bloop bleep bloop :robot:")
 
     async def on_message(self, message):
-        if message.author.bot or message.guild is None:
+        if message.author.bot:
+            return
+        if message.guild is None:
+            if self.dm_log is not None:
+                try:
+                    await self.dm_log.forward(message)
+                except Exception:
+                    logger.exception("Could not forward a direct message")
             return
         try:
             if self.user in message.mentions:

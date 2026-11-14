@@ -38,6 +38,7 @@ Optional:
 - `RAID_ROLE` - name or id of a role to ping in reminders. Several roles: separate with commas.
 - Officer commands (role `Officer` or `Greggs Bot Maintainer`, or the Manage Server permission): `!reminders off 17/11` / `!reminders on 17/11` mutes one night's reminders, `!raidtest` posts a test reminder for the next raid.
 - With `WOWUTILS_KEY` set the bot also has `!keys` (planned Mythic+ runs and who's looking for a group) and announces in `RAID_CHANNEL` when a raid night is cancelled or put back on.
+- `DM_LOG_CHANNEL` - channel id that direct messages sent to the bot are copied into (sender, text, attachments). The sender gets a reply saying it was passed on. Empty = DMs are ignored.
 - `LOOT_COUNCIL_RANKS` - wowutils roster ranks `!lootcouncil` draws from, default `Raider`. Officers draw with `!lootcouncil` (or `!lootcouncil 2`); nobody is drawn twice until the whole list has had a turn. `!lootcouncil status`, `undo` and `reset` manage the round.
 - Reminder wording lives in `messages/raid_day.txt` and `messages/raid_hour.txt` (created by `!raidmessage hour <new text>` / `!raidmessage day <new text>`, or by hand; read each time, no restart needed). Without a file the bot uses the settings below.
 - `RAID_DAY_MESSAGE`, `RAID_HOUR_MESSAGE` - replace the default text of the raid-day (clock time) and hour-before reminders. `{link}` becomes the raid planning hub link, built with `RAID_SETUP_ID` (default `1`).

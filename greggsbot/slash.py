@@ -7,6 +7,7 @@ from typing import Literal, Optional
 import discord
 from discord import app_commands
 
+from .modules.dmlog import PingModule
 from .modules.eightball import EightBallModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
@@ -87,6 +88,12 @@ def register(bot):
     @app_commands.describe(opponent="Who you are challenging")
     async def duel(interaction: discord.Interaction, opponent: discord.Member):
         await run(interaction, duel_cmd.module, "roll", ["duel", opponent.mention], [opponent])
+
+    ping_cmd = command(PingModule, "ping", "Check the bot is awake")
+
+    @ping_cmd
+    async def ping(interaction: discord.Interaction):
+        await run(interaction, ping_cmd.module, "ping")
 
     token_cmd = command(WowTokenModule, "token", "Find out how shite value WoW Tokens are")
 

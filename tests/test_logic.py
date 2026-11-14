@@ -295,3 +295,22 @@ def test_extra_replies_and_answers_load():
     assert len(replies) > 20 and all(r["content"] and not r["content"].startswith("#") for r in replies)
     assert len(extra_entries("answers.txt")) >= 20
     assert extra_entries("missing.txt") == []
+
+
+def test_dm_embed_carries_sender_and_text():
+    from datetime import datetime, timezone
+
+    from greggsbot.modules.dmlog import dm_embed
+
+    class Author:
+        mention = "<@1>"
+        display_avatar = SimpleNamespace(url="https://example.invalid/a.png")
+
+        def __str__(self):
+            return "thrall"
+
+    message = SimpleNamespace(
+        author=Author(), content="hello officers", attachments=[], created_at=datetime(2026, 11, 14, tzinfo=timezone.utc)
+    )
+    fields = {f.name: f.value for f in dm_embed(message).fields}
+    assert fields == {"Sent By": "thrall (<@1>)", "Message:": "hello officers"}

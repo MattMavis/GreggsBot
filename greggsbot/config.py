@@ -49,6 +49,13 @@ class Config:
 
         self.loot_council_ranks = [r.strip() for r in get("LOOT_COUNCIL_RANKS", "Raider").split(",") if r.strip()]
 
+        self.dm_log_channel = None
+        if get("DM_LOG_CHANNEL"):
+            try:
+                self.dm_log_channel = int(get("DM_LOG_CHANNEL"))
+            except ValueError:
+                raise ConfigError("DM_LOG_CHANNEL must be a channel id (a number)")
+
         self.bot_chan = None
         if get("BOT_CHAN"):
             try:
