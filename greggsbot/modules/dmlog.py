@@ -8,26 +8,23 @@ from .base import BaseModule, ResponderModule
 
 logger = logging.getLogger(__name__)
 
-RECEIPT = "Got it. I've passed your message on to the Greggs officers."
+RECEIPT = "Got it. I've passed your message on to the Greggs officers anonymously: they can't see who sent it."
 
 
 def dm_embed(message):
-    author = message.author
-    embed = discord.Embed(
-        title="Direct Message To The Bot", color=random.randint(0, 0xFFFFFF), timestamp=message.created_at
-    )
-    embed.add_field(name="Sent By", value=f"{author} ({author.mention})", inline=False)
+    """The forwarded card. Deliberately carries nothing that identifies the sender."""
+    embed = discord.Embed(title="Anonymous message to the bot", color=random.randint(0, 0xFFFFFF))
+    embed.timestamp = message.created_at
     embed.add_field(name="Message:", value=truncate(message.content, 1024) or "*(no text)*", inline=False)
     if message.attachments:
         links = "\n".join(a.url for a in message.attachments)
         embed.add_field(name="Attachments", value=truncate(links, 1024), inline=False)
-    embed.set_thumbnail(url=author.display_avatar.url)
-    embed.set_footer(text="DM Bot Messages | DM Logs")
+    embed.set_footer(text="DM Bot Messages | Anonymous")
     return embed
 
 
 class DmLogModule(BaseModule):
-    """Copies direct messages sent to the bot into one channel, and tells the sender it did."""
+    """Copies direct messages sent to the bot into one channel, without the sender, and tells the sender it did."""
 
     name = "DM Log"
 

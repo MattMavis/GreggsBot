@@ -297,7 +297,7 @@ def test_extra_replies_and_answers_load():
     assert extra_entries("missing.txt") == []
 
 
-def test_dm_embed_carries_sender_and_text():
+def test_dm_embed_is_anonymous():
     from datetime import datetime, timezone
 
     from greggsbot.modules.dmlog import dm_embed
@@ -312,5 +312,6 @@ def test_dm_embed_carries_sender_and_text():
     message = SimpleNamespace(
         author=Author(), content="hello officers", attachments=[], created_at=datetime(2026, 11, 14, tzinfo=timezone.utc)
     )
-    fields = {f.name: f.value for f in dm_embed(message).fields}
-    assert fields == {"Sent By": "thrall (<@1>)", "Message:": "hello officers"}
+    card = str(dm_embed(message).to_dict())
+    assert "hello officers" in card
+    assert "thrall" not in card and "<@1>" not in card and "a.png" not in card
