@@ -202,18 +202,18 @@ def register(bot):
 
     gamble = found.get(GambleModule)
 
-    points_cmd = command(GambleModule, "points", "How many points you (or someone else) have")
+    points_cmd = command(GambleModule, "points", "Gherkinshoofs' Casino: how many points you (or someone else) have")
 
     @points_cmd
     @app_commands.describe(user="Whose points (default: yours)")
     async def points(interaction: discord.Interaction, user: Optional[discord.Member] = None):
         await run(interaction, gamble, "points", [user.mention] if user else [], [user] if user else [])
 
-    @command(GambleModule, "daily", "Claim your daily points")
+    @command(GambleModule, "daily", "Gherkinshoofs' Casino: claim your daily points from the pickle jar")
     async def daily(interaction: discord.Interaction):
         await run(interaction, gamble, "daily")
 
-    @command(GambleModule, "leaderboard", "Who has the most points")
+    @command(GambleModule, "leaderboard", "Gherkinshoofs' Casino: the high rollers")
     async def leaderboard(interaction: discord.Interaction):
         await run(interaction, gamble, "leaderboard")
 
@@ -222,17 +222,17 @@ def register(bot):
     async def give(interaction: discord.Interaction, user: discord.Member, amount: str):
         await run(interaction, gamble, "give", [user.mention, amount], [user])
 
-    @command(GambleModule, "coinflip", "Double or nothing on a coin flip")
+    @command(GambleModule, "coinflip", "Gherkinshoofs' Casino: double or nothing on a flip")
     @app_commands.describe(amount="Points to stake, or all", call="Your call (default heads)")
     async def coinflip(interaction: discord.Interaction, amount: str, call: Literal["heads", "tails"] = "heads"):
         await run(interaction, gamble, "coinflip", [amount, call])
 
-    @command(GambleModule, "slots", "Spin the slot machine")
+    @command(GambleModule, "slots", "Gherkinshoofs' Casino: spin the Pickle Barrel slots")
     @app_commands.describe(amount="Points to stake, or all")
     async def slots(interaction: discord.Interaction, amount: str):
         await run(interaction, gamble, "slots", [amount])
 
-    @command(GambleModule, "deathroll", "Challenge someone to a 1v1 deathroll for points")
+    @command(GambleModule, "deathroll", "Gherkinshoofs' Casino: challenge someone to a 1v1 deathroll")
     @app_commands.describe(opponent="Who you are challenging", amount="Points each of you stakes, or all")
     async def deathroll(interaction: discord.Interaction, opponent: discord.Member, amount: str):
         await run(interaction, gamble, "deathroll", [opponent.mention, amount], [opponent])
