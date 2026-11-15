@@ -315,3 +315,21 @@ def test_dm_embed_is_anonymous():
     card = str(dm_embed(message).to_dict())
     assert "hello officers" in card
     assert "thrall" not in card and "<@1>" not in card and "a.png" not in card
+
+
+def test_bot_wakes_exactly_when_the_next_reminder_is_due():
+    from datetime import datetime, timedelta, timezone
+
+    from greggsbot.modules.raidcalendar import next_fire_time, parse_reminders
+
+    tz = timezone.utc
+    night = {"eventId": "e1", "date": "2026-11-18", "startTime": "20:00", "status": "planned"}
+    start = datetime(2026, 11, 18, 20, 0, tzinfo=tz)
+    reminders = parse_reminders("14:00,1")
+
+    def nxt(now, sent=()):
+        return next_fire_time([night], tz, now, reminders, set(sent), tz)
+
+    assert nxt(start.replace(hour=13, minute=58)) == start.replace(hour=14)
+    assert nxt(start.replace(hour=14, minute=1), sent=["e1|at(14, 0)"]) == start - timedelta(hours=1)
+    assert nxt(start - timedelta(minutes=30)) is None

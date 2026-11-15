@@ -93,6 +93,18 @@ def due_reminders(events, tz, now, reminders, sent, local_tz=None):
     return due
 
 
+def next_fire_time(events, tz, now, reminders, sent, local_tz=None):
+    """When the next unsent reminder is due, or None."""
+    times = []
+    for start, event in upcoming(events, tz, now):
+        for reminder in reminders:
+            fire_at = fire_time(start, reminder, local_tz)
+            key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
+            if now < fire_at < start and key not in sent:
+                times.append(fire_at)
+    return min(times) if times else None
+
+
 def status_changes(events, known):
     """Events whose status flipped since last time, plus the statuses to remember.
 
@@ -263,10 +275,27 @@ class RaidCalendarModule(ResponderModule):
                 logger.error("[%s] wowutils answered %s%s", self.name, e.status, hint)
             except Exception:
                 logger.exception("[%s] reminder check failed", self.name)
-            await asyncio.sleep(POLL_SECONDS)
+            await asyncio.sleep(self.seconds_until_next_check())
+
+    def seconds_until_next_check(self):
+        """The regular poll interval, cut short so the bot wakes exactly when the next reminder is due."""
+        events, tz = self.cached
+        now = datetime.now(timezone.utc)
+        wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
+        fire_at = next_fire_time(wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz)
+        if fire_at is None:
+            return POLL_SECONDS
+        return max(1, min(POLL_SECONDS, (fire_at - now).total_seconds() + 0.5))
 
     async def send_due(self):
-        events, tz = await self.fetch_events()
+        try:
+            events, tz = await self.fetch_events()
+        except Exception:
+            # a reminder should still go out on time if wowutils is briefly down
+            events, tz = self.cached
+            if not events:
+                raise
+            logger.warning("[%s] wowutils fetch failed, using the calendar from the last good check", self.name)
         now = datetime.now(timezone.utc)
         changed, self.statuses = status_changes(events, self.statuses)
         for event in changed:
