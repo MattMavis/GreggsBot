@@ -336,10 +336,8 @@ def test_bot_wakes_exactly_when_the_next_reminder_is_due():
 
 
 def test_gambling_maths():
-    from greggsbot.modules.gamble import deathroll, parse_wager, slot_payout
+    from greggsbot.modules.gamble import parse_wager, slot_payout
 
-    fixed = iter([40, 7, 1])
-    assert deathroll(100, lambda low, high: next(fixed)) == [40, 7, 1]
     assert [slot_payout(r) for r in (["💎"] * 3, ["🍩"] * 3, ["🍩", "🍩", "☕"], ["🍩", "🥧", "☕"])] == [25, 10, 1.5, 0]
     assert [parse_wager(t, 100) for t in ("50", "all", "101", "0", "-5", "lots")] == [50, 100, None, None, None, None]
 

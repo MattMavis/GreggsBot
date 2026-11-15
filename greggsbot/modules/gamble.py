@@ -19,15 +19,6 @@ REELS = [COIN,"🥧", "🍩", "🍪", "☕", "💎"]
 NOBODY = discord.AllowedMentions.none()
 
 
-def deathroll(start, roll=random.randint):
-    """Rolls 1-start, then 1-(that roll), and so on. Whoever rolls the final 1 loses."""
-    rolls = []
-    while start > 1:
-        start = roll(1, start)
-        rolls.append(start)
-    return rolls
-
-
 def slot_payout(reels):
     """What a spin pays back per point staked."""
     kinds = len(set(reels))
@@ -97,7 +88,14 @@ class Challenge(discord.ui.View):
             await interaction.response.send_message("This one isn't for you.", ephemeral=True)
             return
         self.stop()
-        await interaction.response.edit_message(content=self.module.play_deathroll(self), view=None)
+        bank, players = self.module.bank, [self.challenger, self.opponent]
+        skint = next((p for p in players if bank.balance(p.id) < self.amount), None)
+        if skint is not None:
+            text = f"Deathroll off: {skint.mention} no longer has {self.amount} {COIN}."
+            await interaction.response.edit_message(content=text, view=None)
+            return
+        game = DeathrollGame(bank, players, self.amount, self.message)
+        await interaction.response.edit_message(content=game.text(), view=game)
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
     async def decline(self, interaction, button):
@@ -116,6 +114,61 @@ class Challenge(discord.ui.View):
             await self.message.edit(content=text, view=None)
         except discord.HTTPException:
             logger.exception("Could not expire a deathroll challenge")
+
+
+class DeathrollGame(discord.ui.View):
+    """The Roll button. Players take turns rolling 1-(the last roll); whoever rolls 1 loses."""
+
+    def __init__(self, bank, players, amount, message):
+        super().__init__(timeout=60)
+        self.bank = bank
+        self.players = players
+        self.amount = amount
+        self.message = message
+        self.top = max(100, amount * 10)
+        self.turn = 0
+        self.lines = []
+        # stakes are held while the game runs so nobody can spend them elsewhere
+        for player in players:
+            bank.add(player.id, -amount)
+
+    def text(self, footer=None):
+        header = f"💀 **Deathroll** for {self.amount} {COIN}: {self.players[0].mention} vs {self.players[1].mention}"
+        lines = self.lines if len(self.lines) <= 20 else self.lines[:3] + ["..."] + self.lines[-15:]
+        footer = footer or f"🎲 {self.players[self.turn].mention} to roll 1-{self.top}. One minute, or you forfeit."
+        return "\n".join([header, *lines, footer])
+
+    def settle(self, loser):
+        self.stop()
+        winner = self.players[1 - self.players.index(loser)]
+        self.bank.add(winner.id, 2 * self.amount)
+        return winner
+
+    @discord.ui.button(label="Roll", emoji="🎲", style=discord.ButtonStyle.primary)
+    async def roll(self, interaction, button):
+        player = self.players[self.turn]
+        if interaction.user.id != player.id:
+            await interaction.response.send_message("It's not your roll.", ephemeral=True)
+            return
+        roll = random.randint(1, self.top)
+        self.lines.append(f"{player.display_name} rolls 1-{self.top}: **{roll}**{' 💀' if roll == 1 else ''}")
+        self.top = roll
+        if roll == 1:
+            winner = self.settle(player)
+            footer = f"🎉 {winner.mention} takes {self.amount} {COIN} off {player.mention}."
+            await interaction.response.edit_message(content=self.text(footer), view=None)
+        else:
+            self.turn = 1 - self.turn
+            await interaction.response.edit_message(content=self.text(), view=self)
+
+    async def on_timeout(self):
+        loser = self.players[self.turn]
+        winner = self.settle(loser)
+        footer = f"⏰ {loser.mention} didn't roll in time and forfeits. {winner.mention} takes {self.amount} {COIN}."
+        try:
+            await self.message.edit(content=self.text(footer), view=None)
+        except discord.HTTPException:
+            logger.exception("Could not finish a timed-out deathroll")
 
 
 class GambleModule(ResponderModule):
@@ -226,29 +279,6 @@ class GambleModule(ResponderModule):
         # a slash reply only fills in the "thinking..." placeholder, which never pings, so post a fresh message
         view.message = await message.channel.send(
             f"💀 {message.author.mention} challenges {opponent.mention} to a **deathroll** for {amount} {COIN}! "
-            "Whoever rolls a 1 loses. One minute to answer.",
+            "Take turns rolling; whoever rolls a 1 loses. One minute to answer.",
             view=view,
         )
-
-    def play_deathroll(self, challenge):
-        players = (challenge.challenger, challenge.opponent)
-        amount = challenge.amount
-        skint = next((p for p in players if self.bank.balance(p.id) < amount), None)
-        if skint is not None:
-            return f"Deathroll off: {skint.mention} no longer has {amount} {COIN}."
-
-        lines = []
-        top = max(100, amount * 10)
-        rolls = deathroll(top)
-        for i, roll in enumerate(rolls):
-            lines.append(f"{players[i % 2].display_name} rolls 1-{top}: **{roll}**{' 💀' if roll == 1 else ''}")
-            top = roll
-        if len(lines) > 20:
-            lines = lines[:3] + ["..."] + lines[-15:]
-        loser = players[(len(rolls) - 1) % 2]
-        winner = players[len(rolls) % 2]
-        self.bank.add(loser.id, -amount)
-        self.bank.add(winner.id, amount)
-        header = f"💀 **Deathroll** for {amount} {COIN}: {players[0].mention} vs {players[1].mention}"
-        footer = f"🎉 {winner.mention} takes {amount} {COIN} off {loser.mention}."
-        return "\n".join([header, *lines, footer])
