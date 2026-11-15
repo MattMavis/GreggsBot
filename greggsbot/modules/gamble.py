@@ -223,7 +223,8 @@ class GambleModule(ResponderModule):
             await message.reply(f"{opponent.mention} can't afford that, they only have {self.bank.balance(opponent.id)} {COIN}.", allowed_mentions=NOBODY)
             return
         view = Challenge(self, message.author, opponent, amount)
-        view.message = await message.reply(
+        # a slash reply only fills in the "thinking..." placeholder, which never pings, so post a fresh message
+        view.message = await message.channel.send(
             f"💀 {message.author.mention} challenges {opponent.mention} to a **deathroll** for {amount} {COIN}! "
             "Whoever rolls a 1 loses. One minute to answer.",
             view=view,
