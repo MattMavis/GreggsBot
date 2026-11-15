@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -17,6 +18,7 @@ DAILY = 200
 COIN = "<:SausageRoll:718927129529679945>"
 REELS = [COIN,"🥧", "🍩", "🍪", "☕", "💎"]
 NOBODY = discord.AllowedMentions.none()
+TURN_SECONDS = 60
 
 
 def slot_payout(reels):
@@ -88,14 +90,17 @@ class Challenge(discord.ui.View):
             await interaction.response.send_message("This one isn't for you.", ephemeral=True)
             return
         self.stop()
-        bank, players = self.module.bank, [self.challenger, self.opponent]
-        skint = next((p for p in players if bank.balance(p.id) < self.amount), None)
-        if skint is not None:
-            text = f"Deathroll off: {skint.mention} no longer has {self.amount} {COIN}."
-            await interaction.response.edit_message(content=text, view=None)
+        module, players = self.module, [self.challenger, self.opponent]
+        skint = next((p for p in players if module.bank.balance(p.id) < self.amount), None)
+        busy = next((p for p in players if module.game_of(interaction.channel, p)), None)
+        if skint is not None or busy is not None:
+            why = f"{skint.mention} no longer has {self.amount} {COIN}" if skint else f"{busy.mention} is already in one here"
+            await interaction.response.edit_message(content=f"Deathroll off: {why}.", view=None)
             return
-        game = DeathrollGame(bank, players, self.amount, self.message)
-        await interaction.response.edit_message(content=game.text(), view=game)
+        game = DeathrollGame(module, interaction.channel, players, self.amount)
+        header = f"💀 **Deathroll** for {self.amount} {COIN}: {players[0].mention} vs {players[1].mention}. It's on."
+        await interaction.response.edit_message(content=header, view=None)
+        await interaction.channel.send(game.prompt())
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
     async def decline(self, interaction, button):
@@ -116,59 +121,66 @@ class Challenge(discord.ui.View):
             logger.exception("Could not expire a deathroll challenge")
 
 
-class DeathrollGame(discord.ui.View):
-    """The Roll button. Players take turns rolling 1-(the last roll); whoever rolls 1 loses."""
+class DeathrollGame:
+    """Players take turns using the roll command, rolling 1-(the last roll). Whoever rolls 1 loses."""
 
-    def __init__(self, bank, players, amount, message):
-        super().__init__(timeout=60)
-        self.bank = bank
+    def __init__(self, module, channel, players, amount):
+        self.module = module
+        self.channel = channel
         self.players = players
         self.amount = amount
-        self.message = message
         self.top = max(100, amount * 10)
         self.turn = 0
-        self.lines = []
+        self.timer = None
         # stakes are held while the game runs so nobody can spend them elsewhere
         for player in players:
-            bank.add(player.id, -amount)
+            module.bank.add(player.id, -amount)
+        module.games.append(self)
+        self.wait()
 
-    def text(self, footer=None):
-        header = f"💀 **Deathroll** for {self.amount} {COIN}: {self.players[0].mention} vs {self.players[1].mention}"
-        lines = self.lines if len(self.lines) <= 20 else self.lines[:3] + ["..."] + self.lines[-15:]
-        footer = footer or f"🎲 {self.players[self.turn].mention} to roll 1-{self.top}. One minute, or you forfeit."
-        return "\n".join([header, *lines, footer])
+    def prompt(self):
+        player = self.players[self.turn]
+        prefix = self.module.config.prefix
+        return f"🎲 {player.mention}, `/roll` (or `{prefix}roll`) for 1-{self.top}. One minute, or you forfeit."
+
+    def wait(self):
+        if self.timer is not None:
+            self.timer.cancel()
+        self.timer = asyncio.create_task(self.forfeit())
 
     def settle(self, loser):
-        self.stop()
+        if self.timer is not None:
+            self.timer.cancel()
+        self.module.games.remove(self)
         winner = self.players[1 - self.players.index(loser)]
-        self.bank.add(winner.id, 2 * self.amount)
+        self.module.bank.add(winner.id, 2 * self.amount)
         return winner
 
-    @discord.ui.button(label="Roll", emoji="🎲", style=discord.ButtonStyle.primary)
-    async def roll(self, interaction, button):
-        player = self.players[self.turn]
-        if interaction.user.id != player.id:
-            await interaction.response.send_message("It's not your roll.", ephemeral=True)
-            return
+    async def roll(self, player):
         roll = random.randint(1, self.top)
-        self.lines.append(f"{player.display_name} rolls 1-{self.top}: **{roll}**{' 💀' if roll == 1 else ''}")
+        text = f"🎲 {player.display_name} rolls 1-{self.top}: **{roll}**"
         self.top = roll
         if roll == 1:
             winner = self.settle(player)
-            footer = f"🎉 {winner.mention} takes {self.amount} {COIN} off {player.mention}."
-            await interaction.response.edit_message(content=self.text(footer), view=None)
+            await self.channel.send(f"{text} 💀\n🎉 {winner.mention} takes {self.amount} {COIN} off {player.mention}.")
         else:
             self.turn = 1 - self.turn
-            await interaction.response.edit_message(content=self.text(), view=self)
+            self.wait()
+            await self.channel.send(f"{text}\n{self.prompt()}")
 
-    async def on_timeout(self):
-        loser = self.players[self.turn]
-        winner = self.settle(loser)
-        footer = f"⏰ {loser.mention} didn't roll in time and forfeits. {winner.mention} takes {self.amount} {COIN}."
+    async def forfeit(self):
         try:
-            await self.message.edit(content=self.text(footer), view=None)
-        except discord.HTTPException:
-            logger.exception("Could not finish a timed-out deathroll")
+            await asyncio.sleep(TURN_SECONDS)
+            self.timer = None
+            loser = self.players[self.turn]
+            winner = self.settle(loser)
+            await self.channel.send(
+                f"⏰ {loser.mention} didn't roll in time and forfeits. {winner.mention} takes {self.amount} {COIN}."
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Deathroll forfeit failed")
 
 
 class GambleModule(ResponderModule):
@@ -178,6 +190,21 @@ class GambleModule(ResponderModule):
     def __init__(self, bot):
         super().__init__(bot)
         self.bank = Bank()
+        self.games = []
+
+    def game_of(self, channel, user):
+        return next((g for g in self.games if g.channel.id == channel.id and any(p.id == user.id for p in g.players)), None)
+
+    async def take_roll(self, message):
+        """Uses the author's roll command for their deathroll in this channel. False if they aren't in one."""
+        game = self.game_of(message.channel, message.author)
+        if game is None:
+            return False
+        if game.players[game.turn].id != message.author.id:
+            await message.reply("It's not your roll.")
+        else:
+            await game.roll(message.author)
+        return True
 
     async def help_text(self):
         p = self.config.prefix
@@ -271,6 +298,10 @@ class GambleModule(ResponderModule):
             return
         amount = await self.wager(message, args[1] if len(args) > 1 else "", usage)
         if amount is None:
+            return
+        busy = next((p for p in (message.author, opponent) if self.game_of(message.channel, p)), None)
+        if busy is not None:
+            await message.reply(f"{busy.mention} is already in a deathroll here. One at a time.", allowed_mentions=NOBODY)
             return
         if self.bank.balance(opponent.id) < amount:
             await message.reply(f"{opponent.mention} can't afford that, they only have {self.bank.balance(opponent.id)} {COIN}.", allowed_mentions=NOBODY)

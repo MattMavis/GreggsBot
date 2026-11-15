@@ -161,6 +161,10 @@ class RollModule(ResponderModule):
             await self.start_duel(message, args[1:])
             return
 
+        gamble = next((m for m in self.bot.modules if hasattr(m, "take_roll")), None)
+        if gamble is not None and await gamble.take_roll(message):
+            return
+
         max_value = DEFAULT_MAX
         if args:
             try:
