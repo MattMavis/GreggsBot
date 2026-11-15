@@ -267,6 +267,10 @@ class GambleModule(ResponderModule):
         return self.name, content
 
     async def respond(self, message, word, args):
+        allowed = self.config.gambling_channel
+        if allowed and message.channel.id != allowed:
+            await message.reply(f"Not in here. Gambling lives in <#{allowed}>.")
+            return
         await getattr(self, word)(message, args)
 
     async def wager(self, message, text, usage):

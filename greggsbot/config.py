@@ -56,6 +56,13 @@ class Config:
             except ValueError:
                 raise ConfigError("DM_LOG_CHANNEL must be a channel id (a number)")
 
+        self.gambling_channel = None
+        if get("GAMBLING_CHANNEL"):
+            try:
+                self.gambling_channel = int(get("GAMBLING_CHANNEL"))
+            except ValueError:
+                raise ConfigError("GAMBLING_CHANNEL must be a channel id (a number)")
+
         self.bot_chan = None
         if get("BOT_CHAN"):
             try:
