@@ -19,6 +19,7 @@ COIN = "<:SausageRoll:718927129529679945>"
 REELS = [COIN,"🥧", "🍩", "🍪", "☕", "💎"]
 NOBODY = discord.AllowedMentions.none()
 TURN_SECONDS = 60
+TIDY_SECONDS = 300
 
 
 def slot_payout(reels):
@@ -100,6 +101,7 @@ class Challenge(discord.ui.View):
         game = DeathrollGame(module, interaction.channel, players, self.amount)
         header = f"💀 **Deathroll** for {self.amount} {COIN}: {players[0].mention} vs {players[1].mention}. It's on."
         await interaction.response.edit_message(content=header, view=None)
+        game.messages.append(self.message)
         await game.send_turn()
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger)
@@ -154,6 +156,7 @@ class DeathrollGame:
         self.rolls = 0
         self.over = False
         self.prompt_message = None
+        self.messages = []
         self.timer = None
         # stakes are held while the game runs so nobody can spend them elsewhere
         for player in players:
@@ -168,6 +171,14 @@ class DeathrollGame:
 
     async def send_turn(self, text=""):
         self.prompt_message = await self.channel.send(f"{text}\n{self.prompt()}".strip(), view=RollButton(self))
+        self.messages.append(self.prompt_message)
+
+    async def tidy(self):
+        """Once it's over, removes the roll-by-roll messages after a while. The result message stays."""
+        await self.clear_button()
+        for message in self.messages:
+            if message is not None:
+                await message.delete(delay=TIDY_SECONDS)
 
     async def clear_button(self):
         message, self.prompt_message = self.prompt_message, None
@@ -198,7 +209,7 @@ class DeathrollGame:
         self.rolls += 1
         if roll == 1:
             winner = self.settle(player)
-            await self.clear_button()
+            await self.tidy()
             await self.channel.send(f"{text} 💀\n🎉 {winner.mention} takes {self.amount} {COIN} off {player.mention}.")
         else:
             self.turn = 1 - self.turn
@@ -212,7 +223,7 @@ class DeathrollGame:
             self.timer = None
             loser = self.players[self.turn]
             winner = self.settle(loser)
-            await self.clear_button()
+            await self.tidy()
             await self.channel.send(
                 f"⏰ {loser.mention} didn't roll in time and forfeits. {winner.mention} takes {self.amount} {COIN}."
             )
