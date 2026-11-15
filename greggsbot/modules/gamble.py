@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 STATE_FILE = os.path.join("state", "points.json")
 START = 500
 DAILY = 200
-COIN = "🥐"
-REELS = ["🥐", "🥧", "🍩", "🍪", "☕", "💎"]
+COIN = "<:SausageRoll:718927129529679945>"
+REELS = [COIN,"🥧", "🍩", "🍪", "☕", "💎"]
 NOBODY = discord.AllowedMentions.none()
 
 
