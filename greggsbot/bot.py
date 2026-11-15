@@ -8,6 +8,7 @@ from .modules.ai import AiModule
 from .modules.base import is_admin
 from .modules.dmlog import DmLogModule, PingModule
 from .modules.eightball import EightBallModule
+from .modules.gamble import GambleModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
 from .modules.mythickeys import MythicKeysModule
@@ -66,6 +67,7 @@ class GreggsBot(discord.Client):
             WowTokenModule(self),
             WarcraftLogsModule(self),
             PingModule(self),
+            GambleModule(self),
         ]
         if self.resources is not None:
             self.modules += [EightBallModule(self), PastaModule(self), QuickLinksModule(self)]

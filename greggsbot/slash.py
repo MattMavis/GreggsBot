@@ -9,6 +9,7 @@ from discord import app_commands
 
 from .modules.dmlog import PingModule
 from .modules.eightball import EightBallModule
+from .modules.gamble import GambleModule
 from .modules.help import HelpModule
 from .modules.lootcouncil import LootCouncilModule
 from .modules.mythickeys import MythicKeysModule
@@ -39,7 +40,7 @@ class SlashMessage:
         self.replied = True
         if content is not None:
             content = content.lstrip("\n")
-        await self.interaction.followup.send(content, **kwargs)
+        return await self.interaction.followup.send(content, **kwargs)
 
 
 async def run(interaction, module, word, args=(), mentions=()):
@@ -198,6 +199,43 @@ def register(bot):
     ):
         args = [count] if action == "draw" and count else [] if action == "draw" else [action]
         await run(interaction, council_cmd.module, "lootcouncil", args)
+
+    gamble = found.get(GambleModule)
+
+    points_cmd = command(GambleModule, "points", "How many points you (or someone else) have")
+
+    @points_cmd
+    @app_commands.describe(user="Whose points (default: yours)")
+    async def points(interaction: discord.Interaction, user: Optional[discord.Member] = None):
+        await run(interaction, gamble, "points", [user.mention] if user else [], [user] if user else [])
+
+    @command(GambleModule, "daily", "Claim your daily points")
+    async def daily(interaction: discord.Interaction):
+        await run(interaction, gamble, "daily")
+
+    @command(GambleModule, "leaderboard", "Who has the most points")
+    async def leaderboard(interaction: discord.Interaction):
+        await run(interaction, gamble, "leaderboard")
+
+    @command(GambleModule, "give", "Give someone some of your points")
+    @app_commands.describe(user="Who gets them", amount="How many, or all")
+    async def give(interaction: discord.Interaction, user: discord.Member, amount: str):
+        await run(interaction, gamble, "give", [user.mention, amount], [user])
+
+    @command(GambleModule, "coinflip", "Double or nothing on a coin flip")
+    @app_commands.describe(amount="Points to stake, or all", call="Your call (default heads)")
+    async def coinflip(interaction: discord.Interaction, amount: str, call: Literal["heads", "tails"] = "heads"):
+        await run(interaction, gamble, "coinflip", [amount, call])
+
+    @command(GambleModule, "slots", "Spin the slot machine")
+    @app_commands.describe(amount="Points to stake, or all")
+    async def slots(interaction: discord.Interaction, amount: str):
+        await run(interaction, gamble, "slots", [amount])
+
+    @command(GambleModule, "deathroll", "Challenge someone to a 1v1 deathroll for points")
+    @app_commands.describe(opponent="Who you are challenging", amount="Points each of you stakes, or all")
+    async def deathroll(interaction: discord.Interaction, opponent: discord.Member, amount: str):
+        await run(interaction, gamble, "deathroll", [opponent.mention, amount], [opponent])
 
     eightball_cmd = command(EightBallModule, "8ball", "Ask the Magic 8-Ball a yes/no question")
 
