@@ -1,6 +1,6 @@
 # Deploying Greggs Bot
 
-The bot is one long-running Python process. It needs Python 3.11 or newer, outbound internet, and a handful of settings. It does not need a web port or a database.
+The bot is one long-running Python process. It needs Python 3.9 or newer, outbound internet, and a handful of settings. It does not need a web port or a database.
 
 Do part 1 once, then pick one of the hosting options in part 3.
 

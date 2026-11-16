@@ -58,8 +58,5 @@ class ResourceService:
     async def pastas(self):
         return await self.get("pastas")
 
-    async def reminders(self):
-        return await self.get("reminders")
-
     async def bot_replies(self):
         return await self.get("botreplies")

@@ -15,7 +15,8 @@ from .modules.lootcouncil import LootCouncilModule
 from .modules.mythickeys import MythicKeysModule
 from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
-from .modules.raidcalendar import RaidCalendarModule, night_date, upcoming
+from .modules.raidcalendar import RaidCalendarModule
+from .modules.raidschedule import night_date, upcoming
 from .modules.raiderio import DEFAULT_CHARACTER, RaiderIoModule
 from .modules.roll import RollModule
 from .modules.warcraftlogs import WarcraftLogsModule
@@ -65,46 +66,34 @@ def register(bot):
     found = {type(m): m for m in bot.modules}
 
     def command(module_class, name, description):
-        """Registers the decorated function only when its module is loaded."""
-        module = found.get(module_class)
+        """Registers the decorated function only when its module is loaded; its body finds it in found."""
 
         def decorator(func):
-            if module is not None:
+            if module_class in found:
                 tree.command(name=name, description=description)(app_commands.guild_only()(func))
             return func
 
-        decorator.module = module
         return decorator
 
-    roll_cmd = command(RollModule, "roll", "Roll the die! 1-100, or up to a max of your choosing")
-
-    @roll_cmd
+    @command(RollModule, "roll", "Roll the die! 1-100, or up to a max of your choosing")
     @app_commands.describe(max="Highest number you can roll (default 100)")
     async def roll(interaction: discord.Interaction, max: Optional[int] = None):
-        await run(interaction, roll_cmd.module, "roll", [max] if max is not None else [])
+        await run(interaction, found[RollModule], "roll", [max] if max is not None else [])
 
-    duel_cmd = command(RollModule, "duel", "Challenge someone to a roll duel")
-
-    @duel_cmd
+    @command(RollModule, "duel", "Challenge someone to a roll duel")
     @app_commands.describe(opponent="Who you are challenging")
     async def duel(interaction: discord.Interaction, opponent: discord.Member):
-        await run(interaction, duel_cmd.module, "roll", ["duel", opponent.mention], [opponent])
+        await run(interaction, found[RollModule], "roll", ["duel", opponent.mention], [opponent])
 
-    ping_cmd = command(PingModule, "ping", "Check the bot is awake")
-
-    @ping_cmd
+    @command(PingModule, "ping", "Check the bot is awake")
     async def ping(interaction: discord.Interaction):
-        await run(interaction, ping_cmd.module, "ping")
+        await run(interaction, found[PingModule], "ping")
 
-    token_cmd = command(WowTokenModule, "token", "Find out how shite value WoW Tokens are")
-
-    @token_cmd
+    @command(WowTokenModule, "token", "Find out how shite value WoW Tokens are")
     async def token(interaction: discord.Interaction):
-        await run(interaction, token_cmd.module, "token")
+        await run(interaction, found[WowTokenModule], "token")
 
-    rank_cmd = command(RaiderIoModule, "rank", "Raider.IO raid rankings for a guild")
-
-    @rank_cmd
+    @command(RaiderIoModule, "rank", "Raider.IO raid rankings for a guild")
     @app_commands.describe(guild="Guild name", realm="Realm, e.g. tarren-mill", region="EU, US, KR or TW")
     async def rank(
         interaction: discord.Interaction,
@@ -113,11 +102,9 @@ def register(bot):
         region: Optional[str] = None,
     ):
         args = [guild or config.guild_name, realm or config.guild_realm, region or config.guild_region]
-        await run(interaction, rank_cmd.module, "rank", args)
+        await run(interaction, found[RaiderIoModule], "rank", args)
 
-    check_cmd = command(RaiderIoModule, "check", "Raider.IO Mythic+ rankings for a character")
-
-    @check_cmd
+    @command(RaiderIoModule, "check", "Raider.IO Mythic+ rankings for a character")
     @app_commands.describe(
         character="Character name", realm="Realm, e.g. tarren-mill", region="EU, US, KR or TW", role="Role to rank"
     )
@@ -129,41 +116,31 @@ def register(bot):
         role: Optional[Literal["tank", "healer", "dps"]] = None,
     ):
         args = [character or DEFAULT_CHARACTER, realm or config.guild_realm, region or config.guild_region]
-        await run(interaction, check_cmd.module, "check", args + ([role] if role else []))
+        await run(interaction, found[RaiderIoModule], "check", args + ([role] if role else []))
 
-    wcl_cmd = command(WarcraftLogsModule, "wcl", "Latest Warcraft Logs reports")
-
-    @wcl_cmd
+    @command(WarcraftLogsModule, "wcl", "Latest Warcraft Logs reports")
     async def wcl(interaction: discord.Interaction):
-        await run(interaction, wcl_cmd.module, "wcl")
+        await run(interaction, found[WarcraftLogsModule], "wcl")
 
-    raids_cmd = command(RaidCalendarModule, "raids", "Upcoming raid nights and who's signed up")
-
-    @raids_cmd
+    @command(RaidCalendarModule, "raids", "Upcoming raid nights and who's signed up")
     async def raids(interaction: discord.Interaction):
-        await run(interaction, raids_cmd.module, "raids")
+        await run(interaction, found[RaidCalendarModule], "raids")
 
-    raidtest_cmd = command(RaidCalendarModule, "raidtest", "Officers: post test raid posts now")
-
-    @raidtest_cmd
+    @command(RaidCalendarModule, "raidtest", "Officers: post test raid posts now")
     @app_commands.describe(what="Which posts to test (default: reminders)")
     async def raidtest(interaction: discord.Interaction, what: Literal["reminders", "cancel"] = "reminders"):
-        await run(interaction, raidtest_cmd.module, "raidtest", ["cancel"] if what == "cancel" else [])
+        await run(interaction, found[RaidCalendarModule], "raidtest", ["cancel"] if what == "cancel" else [])
 
-    raidmessage_cmd = command(RaidCalendarModule, "raidmessage", "Officers: see or change a raid reminder's wording")
-
-    @raidmessage_cmd
+    @command(RaidCalendarModule, "raidmessage", "Officers: see or change a raid reminder's wording")
     @app_commands.describe(
         which="The 14:00 raid-day reminder or the hour-before one",
         text="New wording. Leave empty to see the current one, or type reset for the default",
     )
     async def raidmessage(interaction: discord.Interaction, which: Literal["hour", "day"], text: Optional[str] = None):
-        await run(interaction, raidmessage_cmd.module, "raidmessage", [which] + ([text] if text else []))
-
-    reminders_cmd = command(RaidCalendarModule, "reminders", "Officers: turn one raid night's reminders off or on")
+        await run(interaction, found[RaidCalendarModule], "raidmessage", [which] + ([text] if text else []))
 
     async def night_choices(interaction: discord.Interaction, current: str):
-        calendar = reminders_cmd.module
+        calendar = found[RaidCalendarModule]
         events, tz = calendar.cached
         choices = []
         for start, event in upcoming(events, tz, datetime.now(timezone.utc)):
@@ -173,21 +150,17 @@ def register(bot):
                 choices.append(app_commands.Choice(name=label[:100], value=night_date(start, config.tz)))
         return choices[:25]
 
-    @reminders_cmd
+    @command(RaidCalendarModule, "reminders", "Officers: turn one raid night's reminders off or on")
     @app_commands.describe(night="Which raid night", state="Reminders for that night")
     @app_commands.autocomplete(night=night_choices)
     async def reminders(interaction: discord.Interaction, night: str, state: Literal["off", "on"]):
-        await run(interaction, reminders_cmd.module, "reminders", [state, night])
+        await run(interaction, found[RaidCalendarModule], "reminders", [state, night])
 
-    keys_cmd = command(MythicKeysModule, "keys", "Planned Mythic+ runs and who's looking for a group")
-
-    @keys_cmd
+    @command(MythicKeysModule, "keys", "Planned Mythic+ runs and who's looking for a group")
     async def keys(interaction: discord.Interaction):
-        await run(interaction, keys_cmd.module, "keys")
+        await run(interaction, found[MythicKeysModule], "keys")
 
-    council_cmd = command(LootCouncilModule, "lootcouncil", "Draw this week's loot council from the roster")
-
-    @council_cmd
+    @command(LootCouncilModule, "lootcouncil", "Draw this week's loot council from the roster")
     @app_commands.describe(
         action="draw (officers), status, undo the last draw, or reset the whole list",
         count="How many people to draw (default 1)",
@@ -198,68 +171,56 @@ def register(bot):
         count: Optional[int] = None,
     ):
         args = [count] if action == "draw" and count else [] if action == "draw" else [action]
-        await run(interaction, council_cmd.module, "lootcouncil", args)
+        await run(interaction, found[LootCouncilModule], "lootcouncil", args)
 
-    gamble = found.get(GambleModule)
-
-    points_cmd = command(GambleModule, "points", "How many points you (or someone else) have")
-
-    @points_cmd
+    @command(GambleModule, "points", "How many points you (or someone else) have")
     @app_commands.describe(user="Whose points (default: yours)")
     async def points(interaction: discord.Interaction, user: Optional[discord.Member] = None):
-        await run(interaction, gamble, "points", [user.mention] if user else [], [user] if user else [])
+        await run(interaction, found[GambleModule], "points", [user.mention] if user else [], [user] if user else [])
 
     @command(GambleModule, "daily", "Claim your daily points")
     async def daily(interaction: discord.Interaction):
-        await run(interaction, gamble, "daily")
+        await run(interaction, found[GambleModule], "daily")
 
     @command(GambleModule, "leaderboard", "Who has the most points")
     async def leaderboard(interaction: discord.Interaction):
-        await run(interaction, gamble, "leaderboard")
+        await run(interaction, found[GambleModule], "leaderboard")
 
     @command(GambleModule, "give", "Give someone some of your points")
     @app_commands.describe(user="Who gets them", amount="How many, or all")
     async def give(interaction: discord.Interaction, user: discord.Member, amount: str):
-        await run(interaction, gamble, "give", [user.mention, amount], [user])
+        await run(interaction, found[GambleModule], "give", [user.mention, amount], [user])
 
     @command(GambleModule, "coinflip", "Double or nothing on a coin flip")
     @app_commands.describe(amount="Points to stake, or all", call="Your call (default heads)")
     async def coinflip(interaction: discord.Interaction, amount: str, call: Literal["heads", "tails"] = "heads"):
-        await run(interaction, gamble, "coinflip", [amount, call])
+        await run(interaction, found[GambleModule], "coinflip", [amount, call])
 
     @command(GambleModule, "slots", "Spin the slot machine")
     @app_commands.describe(amount="Points to stake, or all")
     async def slots(interaction: discord.Interaction, amount: str):
-        await run(interaction, gamble, "slots", [amount])
+        await run(interaction, found[GambleModule], "slots", [amount])
 
     @command(GambleModule, "deathroll", "Challenge someone to a 1v1 deathroll for points")
     @app_commands.describe(opponent="Who you are challenging", amount="Points each of you stakes, or all")
     async def deathroll(interaction: discord.Interaction, opponent: discord.Member, amount: str):
-        await run(interaction, gamble, "deathroll", [opponent.mention, amount], [opponent])
+        await run(interaction, found[GambleModule], "deathroll", [opponent.mention, amount], [opponent])
 
-    eightball_cmd = command(EightBallModule, "8ball", "Ask the Magic 8-Ball a yes/no question")
-
-    @eightball_cmd
+    @command(EightBallModule, "8ball", "Ask the Magic 8-Ball a yes/no question")
     @app_commands.describe(question="Your yes/no question")
     async def eightball(interaction: discord.Interaction, question: str):
-        await run(interaction, eightball_cmd.module, "8ball", question.split())
+        await run(interaction, found[EightBallModule], "8ball", question.split())
 
-    pasta_cmd = command(PastaModule, "pasta", "Emoji pasta straight from the meme factory")
-
-    @pasta_cmd
+    @command(PastaModule, "pasta", "Emoji pasta straight from the meme factory")
     @app_commands.describe(key="A specific pasta (leave empty for a random one)")
     async def pasta(interaction: discord.Interaction, key: Optional[str] = None):
-        await run(interaction, pasta_cmd.module, "pasta", key.split()[:1] if key else [])
+        await run(interaction, found[PastaModule], "pasta", key.split()[:1] if key else [])
 
-    link_cmd = command(QuickLinksModule, "link", "Get links fucking quick")
-
-    @link_cmd
+    @command(QuickLinksModule, "link", "Get links fucking quick")
     @app_commands.describe(name="Which link")
     async def link(interaction: discord.Interaction, name: str):
-        await run(interaction, link_cmd.module, name.split()[0].lower() if name.split() else "")
+        await run(interaction, found[QuickLinksModule], name.split()[0].lower() if name.split() else "")
 
-    help_cmd = command(HelpModule, "help", "What Greggs Bot can do")
-
-    @help_cmd
+    @command(HelpModule, "help", "What Greggs Bot can do")
     async def help_(interaction: discord.Interaction):
-        await run(interaction, help_cmd.module, "ghelp")
+        await run(interaction, found[HelpModule], "ghelp")

@@ -1,9 +1,13 @@
 import logging
+import re
+
+import discord
 
 logger = logging.getLogger(__name__)
 
 TROUBLE = "Sorry, I had some trouble fetching that information."
 COOKIE = "\nBut here, have a cookie :cookie:."
+NOBODY = discord.AllowedMentions.none()
 
 
 def parse_command(content, prefix):
@@ -13,6 +17,13 @@ def parse_command(content, prefix):
     if not parts:
         return None
     return parts[0].lower(), parts[1:]
+
+
+def find_mentioned_user(message, text):
+    match = re.fullmatch(r"<@!?(\d+)>", text)
+    if not match:
+        return None
+    return next((u for u in message.mentions if u.id == int(match.group(1))), None)
 
 
 class BaseModule:

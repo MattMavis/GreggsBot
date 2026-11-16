@@ -1,154 +1,46 @@
 import asyncio
-import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import discord
 
 from ..resources import HttpError
+from ..state import load_json, save_json
 from .base import ResponderModule, can_manage
+from .raidschedule import (
+    due_reminders,
+    event_start,
+    find_night,
+    next_fire_time,
+    signup_line,
+    stamp,
+    status_changes,
+    title,
+    upcoming,
+)
 
 logger = logging.getLogger(__name__)
 
-API = "https://api.wowutils.com/v1"
 POLL_SECONDS = 300
-GRACE = timedelta(minutes=30)
 STATE_FILE = os.path.join("state", "raid_reminders.json")
 # plain text files, edited by hand or with the raidmessage command; read every time a reminder is sent
 MESSAGE_FILES = {"at": os.path.join("messages", "raid_day.txt"), "before": os.path.join("messages", "raid_hour.txt")}
-COMING = ("present", "late")
 HUB = "https://wowutils.com/viserio-cooldowns/raid"
-# {link} becomes the raid planning hub link
-DAY_MESSAGE = (
-    "🗓️ Any absences for tonight's raid after this point will be classed as a late absence (LA). "
-    "Absence without informing an officer before the raid will count as an unauthorised absence (UA). {link}"
-)
-HOUR_MESSAGE = "📣 Raid starts in an hour, please check the calendar and be ready 15 minutes in advance!"
 
 
-def event_start(event, tz):
-    try:
-        naive = datetime.strptime(f"{event['date']} {event['startTime']}", "%Y-%m-%d %H:%M")
-    except (KeyError, TypeError, ValueError):
-        return None
-    return naive.replace(tzinfo=tz)
-
-
-def upcoming(events, tz, now):
-    """Planned events that have not started yet, soonest first, as (start, event)."""
-    found = []
-    for event in events:
-        start = event_start(event, tz)
-        if start and start > now and event.get("status") != "cancelled":
-            found.append((start, event))
-    return sorted(found, key=lambda pair: pair[0])
-
-
-def signup_line(event):
-    people = (event.get("signups") or []) + (event.get("guests") or [])
-    count = lambda *statuses: sum(1 for p in people if p.get("status") in statuses)
-    parts = [f"{count(*COMING)}/{event.get('rosterSize', len(people))} coming"]
-    for status in ("tentative", "standby", "absent"):
-        if count(status):
-            parts.append(f"{count(status)} {status}")
-    if not event.get("autoConfirmed"):
-        waiting = sum(1 for s in event.get("signups") or [] if not s.get("responded"))
-        if waiting:
-            parts.append(f"{waiting} not answered")
-    return " · ".join(parts)
-
-
-def parse_reminders(text):
-    """'14:00,1' -> [("at", (14, 0)), ("before", 1.0)]: a time on the raid day, or hours before the start."""
-    reminders = []
-    for part in text.split(","):
-        part = part.strip()
-        if ":" in part:
-            moment = datetime.strptime(part, "%H:%M")
-            reminders.append(("at", (moment.hour, moment.minute)))
-        elif part:
-            reminders.append(("before", float(part)))
-    return reminders
-
-
-def fire_time(start, reminder, local_tz=None):
-    kind, value = reminder
-    if kind == "at":
-        # clock times are the bot's own time (REMINDER_TZ or the machine's), not the group's server zone
-        return start.astimezone(local_tz).replace(hour=value[0], minute=value[1])
-    return start - timedelta(hours=value)
-
-
-def due_reminders(events, tz, now, reminders, sent, local_tz=None):
-    """(event, reminder, key) for each reminder whose moment has arrived and has not been sent."""
-    due = []
-    for start, event in upcoming(events, tz, now):
-        for reminder in reminders:
-            fire_at = fire_time(start, reminder, local_tz)
-            key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
-            if fire_at <= now < min(start, fire_at + GRACE) and key not in sent:
-                due.append((event, reminder, key))
-    return due
-
-
-def next_fire_time(events, tz, now, reminders, sent, local_tz=None):
-    """When the next unsent reminder is due, or None."""
-    times = []
-    for start, event in upcoming(events, tz, now):
-        for reminder in reminders:
-            fire_at = fire_time(start, reminder, local_tz)
-            key = f"{event.get('eventId')}|{reminder[0]}{reminder[1]}"
-            if now < fire_at < start and key not in sent:
-                times.append(fire_at)
-    return min(times) if times else None
-
-
-def status_changes(events, known):
-    """Events whose status flipped since last time, plus the statuses to remember.
-
-    An event seen for the first time is only remembered, never announced.
-    """
-    changed = []
-    seen = {}
-    for event in events:
-        event_id, status = str(event.get("eventId")), event.get("status")
-        seen[event_id] = status
-        if known.get(event_id) not in (None, status) and status in ("planned", "cancelled"):
-            changed.append(event)
-    return changed, seen
-
-
-def stamp(start, style):
-    return f"<t:{int(start.timestamp())}:{style}>"
-
-
-def title(event):
-    name = event.get("name") or "Raid"
-    return f"**{name}** ({event['difficulty']})" if event.get("difficulty") else f"**{name}**"
-
-
-def night_date(start, local_tz=None):
-    return start.astimezone(local_tz).strftime("%Y-%m-%d")
-
-
-def find_night(nights, text, local_tz=None):
-    """Matches '2026-11-17', '17/11' or '17/11/2026' against the upcoming nights."""
-    for start, event in nights:
-        local = start.astimezone(local_tz)
-        if text in (f"{local:%Y-%m-%d}", f"{local.day}/{local.month}", f"{local:%d/%m}", f"{local:%d/%m/%Y}"):
-            return start, event
-    return None
+def find_role(guild, name):
+    return guild.get_role(int(name)) if name.isdigit() else discord.utils.get(guild.roles, name=name)
 
 
 class RaidCalendarModule(ResponderModule):
     name = "Raid Calendar"
     commands = ("raids", "raidtest", "reminders", "raidmessage")
 
-    def __init__(self, bot):
+    def __init__(self, bot, wowutils):
         super().__init__(bot)
-        self.group_id = None
+        self.wowutils = wowutils
         self.etag = None
         self.cached = ([], timezone.utc)
         self.sent, self.muted, self.statuses = self.load_state()
@@ -171,26 +63,9 @@ class RaidCalendarModule(ResponderModule):
         else:
             logger.warning("RAID_CHANNEL is not set: raid reminders are off, %sraids still works", self.config.prefix)
 
-    async def request(self, path, etag=None):
-        headers = {"Authorization": f"Bearer {self.config.wowutils_key}"}
-        if etag:
-            headers["If-None-Match"] = etag
-        async with self.bot.session.get(API + path, headers=headers) as resp:
-            if resp.status == 304:
-                return None, etag
-            if resp.status != 200:
-                raise HttpError(resp.status)
-            return await resp.json(content_type=None), resp.headers.get("ETag")
-
-    async def group(self):
-        if self.group_id is None:
-            root, _ = await self.request("")
-            self.group_id = root["group"]["groupId"]
-        return self.group_id
-
     async def fetch_events(self):
-        data, self.etag = await self.request(
-            f"/groups/{await self.group()}/calendar-events?upcoming=true&limit=30", self.etag
+        data, self.etag = await self.wowutils.request(
+            f"/groups/{await self.wowutils.group()}/calendar-events?upcoming=true&limit=30", self.etag
         )
         if data is not None:
             try:
@@ -228,6 +103,9 @@ class RaidCalendarModule(ResponderModule):
 
     def muted_mark(self, event):
         return " 🔕" if str(event.get("eventId")) in self.muted else ""
+
+    def unmuted(self, events):
+        return [e for e in events if str(e.get("eventId")) not in self.muted]
 
     async def test_reminder(self, message, nights, cancel=False):
         if not self.config.raid_channel:
@@ -281,8 +159,7 @@ class RaidCalendarModule(ResponderModule):
         """The regular poll interval, cut short so the bot wakes exactly when the next reminder is due."""
         events, tz = self.cached
         now = datetime.now(timezone.utc)
-        wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
-        fire_at = next_fire_time(wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz)
+        fire_at = next_fire_time(self.unmuted(events), tz, now, self.config.raid_reminders, self.sent, self.config.tz)
         if fire_at is None:
             return POLL_SECONDS
         return max(1, min(POLL_SECONDS, (fire_at - now).total_seconds() + 0.5))
@@ -302,9 +179,8 @@ class RaidCalendarModule(ResponderModule):
             start = event_start(event, tz)
             if start and start > now and self.config.raid_cancel_notices:
                 await self.announce_status(event, start)
-        wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
         for event, reminder, key in due_reminders(
-            wanted, tz, now, self.config.raid_reminders, self.sent, self.config.tz
+            self.unmuted(events), tz, now, self.config.raid_reminders, self.sent, self.config.tz
         ):
             await self.send_reminder(reminder[0])
             self.sent.add(key)
@@ -314,9 +190,10 @@ class RaidCalendarModule(ResponderModule):
         self.save_state()
 
     async def hub_link(self):
-        link = f"{HUB}?groupId={self.group_id}"
+        group_id = self.wowutils.group_id
+        link = f"{HUB}?groupId={group_id}"
         try:
-            reset, _ = await self.request(f"/groups/{self.group_id}/latest-reset")
+            reset, _ = await self.wowutils.request(f"/groups/{group_id}/latest-reset")
             link += f"&resetId={reset['resetId']}&setupId={self.config.raid_setup_id}"
         except Exception:
             logger.exception("[%s] could not look up the current reset for the link", self.name)
@@ -331,10 +208,7 @@ class RaidCalendarModule(ResponderModule):
 
         pings = []
         for name in self.config.raid_roles:
-            if name.isdigit():
-                role = channel.guild.get_role(int(name))
-            else:
-                role = discord.utils.get(channel.guild.roles, name=name)
+            role = find_role(channel.guild, name)
             if role is None:
                 logger.error("[%s] role %r not found", self.name, name)
             else:
@@ -396,14 +270,11 @@ class RaidCalendarModule(ResponderModule):
         return await self.post(f"✅ {title(event)} on {stamp(start, 'F')} is back on.", test)
 
     def load_state(self):
+        state = load_json(STATE_FILE, None)
         try:
-            with open(STATE_FILE, encoding="utf-8") as f:
-                state = json.load(f)
             return set(state["sent"]), set(state["muted"]), dict(state.get("statuses") or {})
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        except (KeyError, TypeError, ValueError, AttributeError):
             return set(), set(), {}
 
     def save_state(self):
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump({"sent": sorted(self.sent), "muted": sorted(self.muted), "statuses": self.statuses}, f)
+        save_json(STATE_FILE, {"sent": sorted(self.sent), "muted": sorted(self.muted), "statuses": self.statuses})

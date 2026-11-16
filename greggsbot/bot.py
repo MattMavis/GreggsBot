@@ -16,12 +16,12 @@ from .modules.pasta import PastaModule
 from .modules.quicklinks import QuickLinksModule
 from .modules.raidcalendar import RaidCalendarModule
 from .modules.raiderio import RaiderIoModule
-from .modules.raidreminder import RaidReminderModule
 from .modules.roll import RollModule
 from .modules.warcraftlogs import WarcraftLogsModule
 from .modules.wowtoken import WowTokenModule
 from .resources import ResourceService
 from .slash import register as register_slash_commands
+from .wowutils import WowUtils
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +71,15 @@ class GreggsBot(discord.Client):
         ]
         if self.resources is not None:
             self.modules += [EightBallModule(self), PastaModule(self), QuickLinksModule(self)]
-            # the wowutils calendar replaces the API's fixed-schedule reminders; running both would double-post
-            if not self.config.wowutils_key:
-                self.modules.append(RaidReminderModule(self))
         else:
             logger.warning("API is not set: 8-ball, pasta and quick links are off")
         if self.config.wowutils_key:
-            calendar = RaidCalendarModule(self)
-            self.modules += [calendar, MythicKeysModule(self, calendar), LootCouncilModule(self, calendar)]
+            wowutils = WowUtils(self)
+            self.modules += [
+                RaidCalendarModule(self, wowutils),
+                MythicKeysModule(self, wowutils),
+                LootCouncilModule(self, wowutils),
+            ]
         self.modules.append(HelpModule(self))
         for module in self.modules:
             try:

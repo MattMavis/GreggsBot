@@ -2,6 +2,8 @@ import logging
 import os
 from zoneinfo import ZoneInfo
 
+from .modules.raidschedule import DAY_MESSAGE, HOUR_MESSAGE, parse_reminders
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +18,19 @@ class Config:
         def get(name, default=""):
             return (env.get(name) or "").strip() or default
 
+        def names(name, default=""):
+            return [part.strip() for part in get(name, default).split(",") if part.strip()]
+
+        def channel_id(name, strict=True):
+            if not get(name):
+                return None
+            try:
+                return int(get(name))
+            except ValueError:
+                if strict:
+                    raise ConfigError(f"{name} must be a channel id (a number)")
+                logger.warning("%s is not a number, channel logging is disabled", name)
+
         if not get("DISCORD_TOKEN"):
             raise ConfigError("Missing required environment variable: DISCORD_TOKEN")
 
@@ -29,15 +44,8 @@ class Config:
         self.raid = get("RAID")
 
         self.wowutils_key = get("WOWUTILS_KEY")
-        self.raid_roles = [name.strip() for name in get("RAID_ROLE").split(",") if name.strip()]
-        self.raid_channel = None
-        if get("RAID_CHANNEL"):
-            try:
-                self.raid_channel = int(get("RAID_CHANNEL"))
-            except ValueError:
-                raise ConfigError("RAID_CHANNEL must be a channel id (a number)")
-        from .modules.raidcalendar import DAY_MESSAGE, HOUR_MESSAGE, parse_reminders
-
+        self.raid_roles = names("RAID_ROLE")
+        self.raid_channel = channel_id("RAID_CHANNEL")
         try:
             self.raid_reminders = parse_reminders(get("RAID_REMIND", "14:00,1"))
         except ValueError:
@@ -47,30 +55,12 @@ class Config:
         self.raid_hour_message = get("RAID_HOUR_MESSAGE", HOUR_MESSAGE)
         self.raid_setup_id = get("RAID_SETUP_ID", "1")
 
-        self.loot_council_ranks = [r.strip() for r in get("LOOT_COUNCIL_RANKS", "Raider").split(",") if r.strip()]
+        self.loot_council_ranks = names("LOOT_COUNCIL_RANKS", "Raider")
 
-        self.dm_log_channel = None
-        if get("DM_LOG_CHANNEL"):
-            try:
-                self.dm_log_channel = int(get("DM_LOG_CHANNEL"))
-            except ValueError:
-                raise ConfigError("DM_LOG_CHANNEL must be a channel id (a number)")
-
-        self.raid_cancel_notices = (get("RAID_CANCEL_NOTICES") or "").strip().lower() in ("1", "on", "yes", "true")
-
-        self.gambling_channel = None
-        if get("GAMBLING_CHANNEL"):
-            try:
-                self.gambling_channel = int(get("GAMBLING_CHANNEL"))
-            except ValueError:
-                raise ConfigError("GAMBLING_CHANNEL must be a channel id (a number)")
-
-        self.bot_chan = None
-        if get("BOT_CHAN"):
-            try:
-                self.bot_chan = int(get("BOT_CHAN"))
-            except ValueError:
-                logger.warning("BOT_CHAN is not a number, channel logging is disabled")
+        self.dm_log_channel = channel_id("DM_LOG_CHANNEL")
+        self.raid_cancel_notices = get("RAID_CANCEL_NOTICES").lower() in ("1", "on", "yes", "true")
+        self.gambling_channel = channel_id("GAMBLING_CHANNEL")
+        self.bot_chan = channel_id("BOT_CHAN", strict=False)
 
         self.tz = None
         if get("REMINDER_TZ"):

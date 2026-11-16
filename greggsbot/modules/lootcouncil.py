@@ -1,8 +1,8 @@
-import json
 import logging
 import os
 import random
 
+from ..state import load_json, save_json
 from .base import ResponderModule, can_manage
 
 logger = logging.getLogger(__name__)
@@ -125,14 +125,11 @@ class LootCouncilModule(ResponderModule):
         return "\n".join(lines)[:2000]
 
     def load_state(self):
+        state = load_json(STATE_FILE, None)
         try:
-            with open(STATE_FILE, encoding="utf-8") as f:
-                state = json.load(f)
             return list(state["picked"]), list(state["last"])
-        except (OSError, ValueError, KeyError, TypeError):
+        except (KeyError, TypeError):
             return [], []
 
     def save_state(self):
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump({"picked": self.picked, "last": self.last}, f)
+        save_json(STATE_FILE, {"picked": self.picked, "last": self.last})

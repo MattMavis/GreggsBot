@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from greggsbot.config import Config
 from greggsbot.modules.base import ResponderModule, parse_command
 from greggsbot.modules.raiderio import check_summary, medal, pick_raid_slug, rank_fields
-from greggsbot.modules.raidreminder import to_croniter_expr
 from greggsbot.modules.roll import RollDuelManager, get_roll_value
 from greggsbot.resources import to_list
 from greggsbot.util import fmt_number, ordinal, weighted_pick
@@ -59,12 +58,6 @@ def test_firebase_normalisation():
     assert to_list({"-a": {"x": 1}, "-b": None, "-c": {"x": 2}}) == [{"x": 1}, {"x": 2}]
     assert to_list([None, {"x": 1}, None]) == [{"x": 1}]
     assert to_list(None) == []
-
-
-def test_six_field_cron_moves_seconds_last():
-    assert to_croniter_expr("0 30 19 * * 1") == "30 19 * * 1 0"
-    assert to_croniter_expr("30 19 * * 1") == "30 19 * * 1"
-    assert to_croniter_expr("nonsense") is None
 
 
 def test_raid_slug_selection():
@@ -159,7 +152,7 @@ def test_duel_timeout_removes_duel_from_both_players():
 def test_raid_calendar_reminders():
     from datetime import datetime, timedelta, timezone
 
-    from greggsbot.modules.raidcalendar import due_reminders, parse_reminders, signup_line
+    from greggsbot.modules.raidschedule import due_reminders, parse_reminders, signup_line
 
     tz = timezone.utc
     night = {
@@ -184,7 +177,7 @@ def test_raid_calendar_reminders():
     assert due(start - timedelta(hours=3)) == []
     assert signup_line(night) == "2/3 coming · 1 not answered"
 
-    from greggsbot.modules.raidcalendar import find_night, upcoming
+    from greggsbot.modules.raidschedule import find_night, upcoming
 
     nights = upcoming([night], tz, start - timedelta(days=2))
     assert find_night(nights, "18/11", tz)[1] is night
@@ -195,7 +188,7 @@ def test_raid_reminder_clock_time_is_local_not_group_zone():
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    from greggsbot.modules.raidcalendar import fire_time
+    from greggsbot.modules.raidschedule import fire_time
 
     start = datetime(2026, 11, 15, 21, 0, tzinfo=ZoneInfo("Europe/Paris"))
     fire = fire_time(start, ("at", (14, 0)), ZoneInfo("Europe/London"))
@@ -245,7 +238,7 @@ def test_loot_council_never_repeats_within_a_round():
 
 
 def test_raid_cancellation_is_announced_once():
-    from greggsbot.modules.raidcalendar import status_changes
+    from greggsbot.modules.raidschedule import status_changes
 
     night = {"eventId": "e1", "status": "planned"}
     changed, known = status_changes([night], {})
@@ -280,7 +273,7 @@ def test_raid_message_file_overrides_setting(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     config = Config({"DISCORD_TOKEN": "x", "RAID_HOUR_MESSAGE": "from settings"})
-    module = RaidCalendarModule(SimpleNamespace(config=config))
+    module = RaidCalendarModule(SimpleNamespace(config=config), None)
     assert module.message_text("before") == "from settings"
 
     (tmp_path / "messages").mkdir()
@@ -320,7 +313,7 @@ def test_dm_embed_is_anonymous():
 def test_bot_wakes_exactly_when_the_next_reminder_is_due():
     from datetime import datetime, timedelta, timezone
 
-    from greggsbot.modules.raidcalendar import next_fire_time, parse_reminders
+    from greggsbot.modules.raidschedule import next_fire_time, parse_reminders
 
     tz = timezone.utc
     night = {"eventId": "e1", "date": "2026-11-18", "startTime": "20:00", "status": "planned"}
@@ -343,7 +336,7 @@ def test_gambling_maths():
 
 
 def test_bank_keeps_points_and_pays_daily_once(tmp_path):
-    from greggsbot.modules.gamble import DAILY, START, Bank
+    from greggsbot.modules.bank import DAILY, START, Bank
 
     path = str(tmp_path / "points.json")
     bank = Bank(path)

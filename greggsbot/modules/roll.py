@@ -1,9 +1,9 @@
 import asyncio
 import logging
 import random
-import re
 
-from .base import ResponderModule
+from .base import ResponderModule, find_mentioned_user
+from .gamble import GambleModule
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +91,6 @@ class RollDuel:
                     f"{missing.mention} didn't roll in time. What a wet towel. "
                     f"I guess {present.mention} wins! 🎉 Weey!"
                 )
-        except asyncio.CancelledError:
-            raise
         except Exception:
             logger.exception("Roll duel timeout failed")
 
@@ -136,13 +134,6 @@ class RollDuelManager:
                 self.duels.pop(user_id, None)
 
 
-def find_mentioned_user(message, text):
-    match = re.fullmatch(r"<@!?(\d+)>", text)
-    if not match:
-        return None
-    return next((u for u in message.mentions if u.id == int(match.group(1))), None)
-
-
 class RollModule(ResponderModule):
     name = "Roll"
     commands = ("roll",)
@@ -153,7 +144,11 @@ class RollModule(ResponderModule):
 
     async def help_text(self):
         prefix = self.config.prefix
-        content = f"__Description__: Roll the die! 1-100\n__Usage__: `{prefix}roll [max]`\n__Examples__: `{prefix}roll`, `{prefix}roll 200`"
+        content = (
+            "__Description__: Roll the die! 1-100\n"
+            f"__Usage__: `{prefix}roll [max]`\n"
+            f"__Examples__: `{prefix}roll`, `{prefix}roll 200`"
+        )
         return self.name, content
 
     async def respond(self, message, word, args):
@@ -161,7 +156,7 @@ class RollModule(ResponderModule):
             await self.start_duel(message, args[1:])
             return
 
-        gamble = next((m for m in self.bot.modules if hasattr(m, "take_roll")), None)
+        gamble = next((m for m in self.bot.modules if isinstance(m, GambleModule)), None)
         if gamble is not None and await gamble.take_roll(message):
             return
 
