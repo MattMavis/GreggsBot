@@ -300,7 +300,7 @@ class RaidCalendarModule(ResponderModule):
         changed, self.statuses = status_changes(events, self.statuses)
         for event in changed:
             start = event_start(event, tz)
-            if start and start > now:
+            if start and start > now and self.config.raid_cancel_notices:
                 await self.announce_status(event, start)
         wanted = [e for e in events if str(e.get("eventId")) not in self.muted]
         for event, reminder, key in due_reminders(

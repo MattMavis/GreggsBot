@@ -37,7 +37,7 @@ Optional:
 - `RAID_CHANNEL` - channel id reminders are posted in. Without it only `!raids` works.
 - `RAID_ROLE` - name or id of a role to ping in reminders. Several roles: separate with commas.
 - Officer commands (role `Officer` or `Greggs Bot Maintainer`, or the Manage Server permission): `!reminders off 17/11` / `!reminders on 17/11` mutes one night's reminders, `!raidtest` posts a test reminder for the next raid.
-- With `WOWUTILS_KEY` set the bot also has `!keys` (planned Mythic+ runs and who's looking for a group) and announces in `RAID_CHANNEL` when a raid night is cancelled or put back on.
+- With `WOWUTILS_KEY` set the bot also has `!keys` (planned Mythic+ runs and who's looking for a group) and, with `RAID_CANCEL_NOTICES=on`, announces in `RAID_CHANNEL` when a raid night is cancelled or put back on (off by default).
 - `DM_LOG_CHANNEL` - channel id that direct messages sent to the bot are copied into anonymously (text and attachments, never the sender). The sender gets a reply saying it was passed on. Empty = DMs are ignored.
 - `GAMBLING_CHANNEL` - channel id the gambling commands are limited to (empty = any channel). Points are worthless and live in `state/points.json`: `!points`, `!daily`, `!leaderboard`, `!give @user 50`, `!coinflip 50 tails`, `!slots 50`, `!deathroll @user 100`.
 - `LOOT_COUNCIL_RANKS` - wowutils roster ranks `!lootcouncil` draws from, default `Raider`. Officers draw with `!lootcouncil` (or `!lootcouncil 2`); nobody is drawn twice until the whole list has had a turn. `!lootcouncil status`, `undo` and `reset` manage the round.

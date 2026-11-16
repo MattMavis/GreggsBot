@@ -56,6 +56,8 @@ class Config:
             except ValueError:
                 raise ConfigError("DM_LOG_CHANNEL must be a channel id (a number)")
 
+        self.raid_cancel_notices = (get("RAID_CANCEL_NOTICES") or "").strip().lower() in ("1", "on", "yes", "true")
+
         self.gambling_channel = None
         if get("GAMBLING_CHANNEL"):
             try:
